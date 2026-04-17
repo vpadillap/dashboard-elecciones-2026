@@ -1,0 +1,12 @@
+{
+  "snapshots": [
+    {
+      "filename": "snapshot_20260417_090709.json",
+      "generated_at": "2026-04-17T09:07:09-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.04
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+============================================================
+ONPE ELECTION SCRAPER & SIMULATOR
+============================================================
+Fetching departments...
+Gathering data for 26 regions...
+  [+] AMAZONAS             | Processed:  52.50%
+  [+] ┴NCASH               | Processed:  75.69%
+  [+] APUR═MAC             | Processed:  71.75%
+  [+] AREQUIPA             | Processed:  93.14%
+  [+] AYACUCHO             | Processed:  72.74%
+  [+] CAJAMARCA            | Processed:  51.74%
+  [+] CALLAO               | Processed:  93.55%
+  [+] CUSCO                | Processed:  77.83%
+  [+] HUANCAVELICA         | Processed:  75.57%
+  [+] HU┴NUCO              | Processed:  72.49%
+  [+] ICA                  | Processed:  60.79%
+  [+] JUN═N                | Processed:  71.31%
+  [+] LA LIBERTAD          | Processed:  71.50%
+  [+] LAMBAYEQUE           | Processed:  77.83%
+  [+] LIMA                 | Processed:  89.83%
+  [+] LORETO               | Processed:  69.00%
+  [+] MADRE DE DIOS        | Processed:  49.11%
+  [+] MOQUEGUA             | Processed:  94.64%
+  [+] PASCO                | Processed:  76.43%
+  [+] PIURA                | Processed:  57.49%
+  [+] PUNO                 | Processed:  75.39%
+  [+] SAN MART═N           | Processed:  63.54%
+  [+] TACNA                | Processed:  81.27%
+  [+] TUMBES               | Processed:  79.59%
+  [+] UCAYALI              | Processed:  55.05%
+  [+] EXTRANJERO           | Processed:  16.95%
+
+============================================================
+KEY PERFORMANCE INDICATORS (KPIs)
+------------------------------------------------------------
+Total Regions Processed:   26
+Total Valid Votes So Far:  13,286,115
+Average Region Processing: 70.26%
+============================================================
+
+NATIONAL PROJECTION SUMMARY (Top 15 Candidates)
++--------------------------------------+-------------------------------------------------------------+-----------------+--------------------+-----------+
+| Candidate                            | Party                                                       |   Current Votes |   Projected @ 100% |   Proj. % |
+|--------------------------------------+-------------------------------------------------------------+-----------------+--------------------+-----------|
+| KEIKO SOFIA FUJIMORI HIGUCHI         | FUERZA POPULAR                                              |         2243112 |            2941255 |     17.15 |
+| RAFAEL BERNARDO L╙PEZ ALIAGA CAZORLA | RENOVACI╙N POPULAR                                          |         1700008 |            2099573 |     12.24 |
+| JORGE NIETO MONTESINOS               | PARTIDO DEL BUEN GOBIERNO                                   |         1573995 |            1935049 |     11.28 |
+| ROBERTO HELBERT SANCHEZ PALOMINO     | JUNTOS POR EL PER┌                                          |         1345439 |            1886597 |        11 |
+| RICARDO PABLO BELMONT CASSINELLI     | PARTIDO C═VICO OBRAS                                        |         1329243 |            1718654 |     10.02 |
+| CARLOS GONSALO ALVAREZ LOAYZA        | PARTIDO PA═S PARA TODOS                                     |         1083320 |            1388789 |       8.1 |
+| PABLO ALFONSO LOPEZ CHAU NAVA        | AHORA NACI╙N - AN                                           |         1009286 |            1289105 |      7.52 |
+| MARIA SOLEDAD PEREZ TELLO            | PRIMERO LA GENTE û COMUNIDAD, ECOLOG═A, LIBERTAD Y PROGRESO |          485939 |             609400 |      3.55 |
+| ALFONSO CARLOS ESPA Y GARCES-ALVEAR  | PARTIDO SICREO                                              |          474103 |             591211 |      3.45 |
+| LUIS FERNANDO OLIVERA VEGA           | PARTIDO FRENTE DE LA ESPERANZA 2021                         |          252740 |             322190 |      1.88 |
+| JOSE LEON LUNA GALVEZ                | PODEMOS PER┌                                                |          193436 |             260512 |      1.52 |
+| YONHY LESCANO ANCIETA                | PARTIDO POL═TICO COOPERACI╙N POPULAR                        |          172787 |             221899 |      1.29 |
+| CESAR ACU╤A PERALTA                  | ALIANZA PARA EL PROGRESO                                    |          139773 |             193794 |      1.13 |
+| PITTER ENRIQUE VALDERRAMA PE╤A       | PARTIDO APRISTA PERUANO                                     |          126830 |             166920 |      0.97 |
+| GEORGE PATRICK FORSYTH SOMMER        | PARTIDO DEMOCR┴TICO SOMOS PER┌                              |          116803 |             157077 |      0.92 |
++--------------------------------------+-------------------------------------------------------------+-----------------+--------------------+-----------+
+Traceback (most recent call last):
+  File "C:\Users\Victor Padilla\Documents\vscodeprojects\elecciones 2026\elecciones26.py", line 168, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Victor Padilla\Documents\vscodeprojects\elecciones 2026\elecciones26.py", line 163, in main
+    national_summary.to_csv("election_projection_summary.csv")
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Victor Padilla\Documents\vscodeprojects\elecciones 2026\venv\Lib\site-packages\pandas\core\generic.py", line 3988, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        path_or_buf,
+        ^^^^^^^^^^^^
+    ...<14 lines>...
+        storage_options=storage_options,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Victor Padilla\Documents\vscodeprojects\elecciones 2026\venv\Lib\site-packages\pandas\io\formats\format.py", line 1025, in to_csv
+    csv_formatter.save()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Victor Padilla\Documents\vscodeprojects\elecciones 2026\venv\Lib\site-packages\pandas\io\formats\csvs.py", line 251, in save
+    with get_handle(
+         ~~~~~~~~~~^
+        self.filepath_or_buffer,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        storage_options=self.storage_options,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as handles:
+    ^
+  File "C:\Users\Victor Padilla\Documents\vscodeprojects\elecciones 2026\venv\Lib\site-packages\pandas\io\common.py", line 926, in get_handle
+    handle = open(
+        handle,
+    ...<3 lines>...
+        newline="",
+    )
+PermissionError: [Errno 13] Permission denied: 'election_projection_summary.csv'
