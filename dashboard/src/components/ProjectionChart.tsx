@@ -52,9 +52,9 @@ export function ProjectionChart({ snapshot }: Props) {
                   borderRadius: 8,
                   color: 'var(--text)',
                 }}
-                formatter={(_value: unknown, _name: unknown, entry: { payload?: { pct: number; margen: number } }) => {
-                  const p = entry?.payload
-                  if (!p) return null
+                formatter={(value, _name, entry) => {
+                  const p = (entry as { payload?: { pct: number; margen: number } })?.payload
+                  if (!p) return typeof value === 'number' ? `${value.toFixed(2)}%` : String(value)
                   return [`${p.pct.toFixed(2)}% ± ${p.margen.toFixed(2)} pp`, 'Proyección']
                 }}
               />
@@ -62,7 +62,7 @@ export function ProjectionChart({ snapshot }: Props) {
                 <ErrorBar dataKey="margen" width={6} strokeWidth={2} stroke="var(--text)" />
                 <LabelList dataKey="pct"
                            position="top"
-                           formatter={(v: number) => `${v.toFixed(1)}%`}
+                           formatter={(v) => typeof v === 'number' ? `${v.toFixed(1)}%` : ''}
                            style={{ fill: 'var(--text)', fontSize: 11, fontWeight: 500 }} />
               </Bar>
             </BarChart>

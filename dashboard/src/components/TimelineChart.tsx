@@ -81,7 +81,7 @@ export function TimelineChart({ entries, topNames }: Props) {
                     borderRadius: 8,
                     color: 'var(--text)',
                   }}
-                  formatter={(v: number) => `${v.toFixed(2)}%`}
+                  formatter={(v) => typeof v === 'number' ? `${v.toFixed(2)}%` : String(v)}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 {topNames.map((name, i) => (
