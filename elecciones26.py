@@ -16,6 +16,13 @@ if sys.stdout.encoding != 'utf-8':
     except AttributeError:
         pass
 
+# ===== Despliegue remoto =====
+# Endpoint PHP que recibe los snapshots. El token debe coincidir con el
+# hardcodeado en `upload.php`. Deja UPLOAD_URL vacío para omitir la subida
+# (útil al correr local sin desplegar).
+UPLOAD_URL   = "https://padillaprado.me/elecciones2026/snapshots/upload.php"
+UPLOAD_TOKEN = "FUJIMORINUNCAMAS"
+
 # Constantes
 BASE_URL = "https://resultadoelectoral.onpe.gob.pe/presentacion-backend"
 ID_ELECCION = "10"
@@ -79,6 +86,10 @@ class ONPEScraper:
         # {(scope_id, dep_ubigeo, prov_ubigeo, dist_ubigeo): electores_habiles}
         # Poblado desde caché en disco o desde la API en la primera ejecución.
         self.padron_cache = {}
+        # % actasContabilizadas a nivel nacional tal como lo publica ONPE
+        # (endpoint agregado). Es el número oficial "headline"; distinto del
+        # pct_pond_global que nosotros calculamos ponderando por tamaño final.
+        self.actas_onpe_nacional = None
         # Habilitar HTTP/2 para mimetizar mejor el tráfico del navegador
         self.client = httpx.AsyncClient(
             headers=HEADERS,
@@ -201,6 +212,23 @@ class ONPEScraper:
         if res and isinstance(res, dict) and res.get("success"):
             habiles = int(res["data"].get("totalElectoresHabiles", 0))
         self.padron_cache[(scope_id, dep_ubigeo, prov_ubigeo, dist_ubigeo)] = habiles
+
+    async def fetch_totales_nacional(self):
+        """actasContabilizadas a nivel elección completa (Perú + extranjero),
+        tal como aparece en la UI oficial de ONPE. Se usa SOLO para etiquetar
+        los snapshots en el selector del dashboard — no afecta ningún cálculo
+        estadístico propio."""
+        url = (
+            f"{BASE_URL}/resumen-general/totales"
+            f"?idEleccion={ID_ELECCION}&tipoFiltro=eleccion"
+        )
+        res = await self.fetch_json(url)
+        if res and isinstance(res, dict) and res.get("success"):
+            try:
+                return float(res["data"].get("actasContabilizadas", 0))
+            except (TypeError, ValueError):
+                return None
+        return None
 
     async def fetch_json(self, url):
         async with semaphore:
@@ -410,6 +438,9 @@ class ONPEScraper:
             await tqdm.gather(*(worker(t) for t in to_retry), desc=f"Reintento {retry_count}")
             retry_count += 1
             await asyncio.sleep(5)
+
+        # Totales agregados de ONPE (actasContabilizadas nacional).
+        self.actas_onpe_nacional = await self.fetch_totales_nacional()
 
         await self.client.aclose()
         if self.failed_units:
@@ -1008,7 +1039,16 @@ class ONPEScraper:
                 "pct_pond_global": round(float(pct_pond_global), 2),
                 "actas_jee":       int(n_actas_jee),
                 "votos_jee_est":   int(votos_jee_est),
+                # Total nacional del padrón (electores hábiles) — útil para
+                # que el dashboard calcule ausentismo contra la proyección.
+                "electores_habiles": int(meta['electores_habiles'].sum()),
             }
+            # actasContabilizadas nacional (ONPE). Es el número "oficial" que se
+            # ve en la web de ONPE — distinto del pct_pond_global calculado aquí.
+            if getattr(self, 'actas_onpe_nacional', None) is not None:
+                snap_kpis["actas_contabilizadas_onpe"] = round(
+                    float(self.actas_onpe_nacional), 3
+                )
 
             snap_comparaciones = []
             top5_snap = resumen.head(5).reset_index(drop=True)
@@ -1040,6 +1080,7 @@ class ONPEScraper:
             snap_path = _save_snapshot(snapshot)
             _update_snapshot_index()
             print(f"  Snapshot:            {snap_path}")
+            _upload_snapshots_to_server()
         except Exception as e:
             print(f"\n[!] Error generando snapshot para dashboard: {e}")
 
@@ -1088,6 +1129,44 @@ def _save_snapshot(snapshot: dict) -> str:
     return path
 
 
+def _upload_snapshots_to_server() -> None:
+    """Sube todos los snapshot_*.json y el index.json al endpoint PHP remoto.
+    Se salta silenciosamente si UPLOAD_URL/UPLOAD_TOKEN no están configurados.
+    `index.json` se sube al final para que el dashboard nunca vea referencias
+    a archivos que aún no han llegado."""
+    if not UPLOAD_URL or not UPLOAD_TOKEN or UPLOAD_TOKEN == "REPLACE_WITH_REAL_TOKEN":
+        return
+    if not os.path.isdir(SNAPSHOTS_DIR):
+        return
+
+    files = sorted(
+        f for f in os.listdir(SNAPSHOTS_DIR)
+        if f.startswith('snapshot_') and f.endswith('.json')
+    )
+    if os.path.exists(os.path.join(SNAPSHOTS_DIR, 'index.json')):
+        files.append('index.json')  # al final, después de todos los snapshots
+
+    print(f"[upload] Enviando {len(files)} archivo(s) a {UPLOAD_URL}")
+    headers = {'X-Upload-Token': UPLOAD_TOKEN}
+    with httpx.Client(timeout=60) as client:
+        for fname in files:
+            path = os.path.join(SNAPSHOTS_DIR, fname)
+            try:
+                with open(path, 'rb') as fh:
+                    r = client.post(
+                        UPLOAD_URL,
+                        headers=headers,
+                        files={'file': (fname, fh, 'application/json')},
+                    )
+                if r.status_code == 200:
+                    print(f"[upload] OK  {fname}")
+                else:
+                    body = r.text[:200].replace('\n', ' ')
+                    print(f"[upload] ERR {fname}: HTTP {r.status_code} {body}")
+            except Exception as e:
+                print(f"[upload] ERR {fname}: {e}")
+
+
 def _update_snapshot_index() -> None:
     """Regenera `snapshots/index.json` escaneando el directorio.
     Permite eliminar archivos manualmente sin romper el índice."""
@@ -1101,13 +1180,15 @@ def _update_snapshot_index() -> None:
                 data = json.load(f)
         except (json.JSONDecodeError, OSError):
             continue
+        kpis = data.get('kpis', {})
         entries.append({
-            "filename":        fname,
-            "generated_at":    data.get('generated_at'),
-            "id_eleccion":     data.get('id_eleccion'),
-            "ronda":           data.get('ronda'),
-            "schema_version":  data.get('schema_version'),
-            "pct_pond_global": data.get('kpis', {}).get('pct_pond_global'),
+            "filename":                  fname,
+            "generated_at":              data.get('generated_at'),
+            "id_eleccion":               data.get('id_eleccion'),
+            "ronda":                     data.get('ronda'),
+            "schema_version":            data.get('schema_version'),
+            "pct_pond_global":           kpis.get('pct_pond_global'),
+            "actas_contabilizadas_onpe": kpis.get('actas_contabilizadas_onpe'),
         })
     entries.sort(key=lambda e: e.get('generated_at') or '', reverse=True)
     with open(os.path.join(SNAPSHOTS_DIR, 'index.json'), 'w', encoding='utf-8') as f:

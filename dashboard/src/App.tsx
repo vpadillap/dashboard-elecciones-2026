@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Snapshot, SnapshotIndex } from './types/snapshot'
 import { fetchIndex, fetchSnapshot } from './lib/snapshotLoader'
 import { computeDiff } from './lib/diff'
+import { fetchDisplayNames, buildResolver, type NameResolver } from './lib/displayNames'
+import { fetchDisplayConfig, type DisplayConfig } from './lib/displayConfig'
 
 import { Header } from './components/Header'
 import { SnapshotNavigator } from './components/SnapshotNavigator'
 import { HeroComparison } from './components/HeroComparison'
 import { KPIBar } from './components/KPIBar'
 import { ProjectionChart } from './components/ProjectionChart'
-import { TimelineChart } from './components/TimelineChart'
-import { OthersSection } from './components/OthersSection'
+import { FullTable } from './components/FullTable'
 import { MethodologyModal } from './components/MethodologyModal'
 import { CreditsFooter } from './components/CreditsFooter'
 
@@ -23,6 +24,9 @@ type LoadState =
       current: Snapshot
       previous: Snapshot | null
       activeFilename: string
+      compareFilename: string | null  // null = sin comparación (snapshot más antiguo)
+      resolveName: NameResolver
+      config: DisplayConfig
     }
 
 export default function App() {
@@ -33,14 +37,17 @@ export default function App() {
     let cancelled = false
     async function boot() {
       try {
-        const index = await fetchIndex()
+        const [index, dict, config] = await Promise.all([
+          fetchIndex(), fetchDisplayNames(), fetchDisplayConfig(),
+        ])
         if (cancelled) return
         if (!index.snapshots || index.snapshots.length === 0) {
           setState({ kind: 'empty' })
           return
         }
-        const latest   = index.snapshots[0]
-        const previous = index.snapshots[1] ?? null
+        const resolveName = buildResolver(dict)
+        const latest      = index.snapshots[0]
+        const previous    = index.snapshots[1] ?? null
         const [current, prev] = await Promise.all([
           fetchSnapshot(latest.filename),
           previous ? fetchSnapshot(previous.filename) : Promise.resolve(null),
@@ -51,7 +58,10 @@ export default function App() {
           index,
           current,
           previous: prev,
-          activeFilename: latest.filename,
+          activeFilename:  latest.filename,
+          compareFilename: previous?.filename ?? null,
+          resolveName,
+          config,
         })
       } catch (err) {
         if (cancelled) return
@@ -66,19 +76,30 @@ export default function App() {
     if (state.kind !== 'ready') return
     const i = state.index.snapshots.findIndex(e => e.filename === filename)
     if (i < 0) return
-    const prevEntry = state.index.snapshots[i + 1] ?? null
+    // Al cambiar de captura, por defecto comparar con la inmediatamente anterior.
+    const defaultPrev = state.index.snapshots[i + 1] ?? null
     try {
       const [current, previous] = await Promise.all([
         fetchSnapshot(filename),
-        prevEntry ? fetchSnapshot(prevEntry.filename) : Promise.resolve(null),
+        defaultPrev ? fetchSnapshot(defaultPrev.filename) : Promise.resolve(null),
       ])
       setState({
-        kind: 'ready',
-        index: state.index,
+        ...state,
         current,
         previous,
-        activeFilename: filename,
+        activeFilename:  filename,
+        compareFilename: defaultPrev?.filename ?? null,
       })
+    } catch (err) {
+      setState({ kind: 'error', message: (err as Error).message })
+    }
+  }
+
+  async function selectCompare(filename: string | null) {
+    if (state.kind !== 'ready') return
+    try {
+      const previous = filename ? await fetchSnapshot(filename) : null
+      setState({ ...state, previous, compareFilename: filename })
     } catch (err) {
       setState({ kind: 'error', message: (err as Error).message })
     }
@@ -129,17 +150,17 @@ export default function App() {
           <SnapshotNavigator
             entries={state.index.snapshots}
             activeFilename={state.activeFilename}
-            onSelect={selectSnapshot}
+            compareFilename={state.compareFilename}
+            onSelectActive={selectSnapshot}
+            onSelectCompare={selectCompare}
           />
           <main className="flex-1">
-            <HeroComparison snapshot={state.current} diff={diff} />
+            <HeroComparison snapshot={state.current} diff={diff} resolveName={state.resolveName} config={state.config.hero_comparison} />
             <KPIBar snapshot={state.current} diff={diff} />
-            <ProjectionChart snapshot={state.current} />
-            <TimelineChart
-              entries={state.index.snapshots}
-              topNames={state.current.candidatos.slice(0, 2).map(c => c.nombre)}
-            />
-            <OthersSection snapshot={state.current} diff={diff} />
+            <ProjectionChart snapshot={state.current} resolveName={state.resolveName} />
+            {state.current.candidatos.length > 2 && (
+              <FullTable snapshot={state.current} diff={diff} resolveName={state.resolveName} />
+            )}
           </main>
         </>
       )}

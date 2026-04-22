@@ -1,0 +1,4 @@
+httpx[http2]==0.28.1
+pandas==3.0.2
+tabulate==0.10.0
+tqdm==4.67.3

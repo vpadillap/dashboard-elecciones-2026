@@ -29,6 +29,11 @@ export interface KPIs {
   pct_pond_global: number
   actas_jee: number
   votos_jee_est: number
+  // % actasContabilizadas nacional tal como lo publica ONPE (dato oficial).
+  // Opcional: snapshots antiguos pueden no tenerlo.
+  actas_contabilizadas_onpe?: number
+  // Total del padrón electoral (electores hábiles). Opcional para backcompat.
+  electores_habiles?: number
 }
 
 export interface Methodology {
@@ -55,6 +60,7 @@ export interface SnapshotIndexEntry {
   ronda: 1 | 2
   schema_version: number
   pct_pond_global: number | null
+  actas_contabilizadas_onpe?: number | null
 }
 
 export interface SnapshotIndex {

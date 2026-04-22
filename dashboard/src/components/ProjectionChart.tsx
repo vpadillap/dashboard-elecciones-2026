@@ -1,25 +1,54 @@
+import { useEffect, useState } from 'react'
 import type { Snapshot } from '../types/snapshot'
+import type { NameResolver } from '../lib/displayNames'
+import { fmtInt } from '../lib/format'
 import {
-  BarChart, Bar, XAxis, YAxis, ErrorBar, Tooltip, ResponsiveContainer,
-  CartesianGrid, LabelList,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  CartesianGrid, LabelList, Cell,
 } from 'recharts'
 
 interface Props {
   snapshot: Snapshot
+  resolveName: NameResolver
 }
 
-// Paleta derivada de las 6 variables — evita introducir nuevos colores.
-// Se alternan entre accent-positive, warning y text para distinguir candidatos
-// sin salir del sistema.
-const BAR_COLORS = ['#539987', '#EFA743', '#1C1C1C', '#525252', '#FF5A5F']
+// Leemos los dos tonos del sistema directamente de las variables CSS (index.css)
+// para que cualquier ajuste de paleta se refleje automáticamente en la gráfica.
+// Se alternan: accent-positive (verde), luego accent-neutral (azul), y así.
+function useThemeColors() {
+  const [colors, setColors] = useState({ a: '#5D9878', b: '#12547D' })
+  useEffect(() => {
+    const root = document.documentElement
+    const styles = getComputedStyle(root)
+    const a = styles.getPropertyValue('--accent-positive').trim() || '#5D9878'
+    const b = styles.getPropertyValue('--accent-neutral').trim() || '#12547D'
+    setColors({ a, b })
+  }, [])
+  return colors
+}
 
-export function ProjectionChart({ snapshot }: Props) {
-  // Hasta los primeros 6 candidatos para que el gráfico sea legible en móvil.
+function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState(
+    typeof window === 'undefined' ? false : window.innerWidth < breakpoint
+  )
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < breakpoint)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [breakpoint])
+  return isMobile
+}
+
+export function ProjectionChart({ snapshot, resolveName }: Props) {
+  const isMobile = useIsMobile()
+  const { a: colorA, b: colorB } = useThemeColors()
+
   const data = snapshot.candidatos.slice(0, 6).map((c, i) => ({
-    nombre: shortName(c.nombre),
-    pct: c.pct_est,
-    margen: c.margen_pp,
-    fill: BAR_COLORS[i % BAR_COLORS.length],
+    nombre:   resolveName(c.nombre),
+    pct:      c.pct_est,
+    margen:   c.margen_pp,
+    proy_100: c.proy_100,
+    fill:     i % 2 === 0 ? colorA : colorB,
   }))
 
   return (
@@ -29,40 +58,50 @@ export function ProjectionChart({ snapshot }: Props) {
           Proyección por candidato
         </h3>
         <p className="text-xs md:text-sm text-muted mb-4">
-          Barras: % estimado al 100% · Líneas: margen de error (IC 95%)
+          Barras: % estimado al 100%. El margen de error aparece en el tooltip.
         </p>
         <div className="h-64 md:h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 16, right: 16, bottom: 8, left: 0 }}>
-              <CartesianGrid stroke="rgba(28,28,28,0.08)" vertical={false} />
-              <XAxis dataKey="nombre"
-                     tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                     axisLine={{ stroke: 'rgba(28,28,28,0.2)' }}
-                     tickLine={false}
-                     interval={0}
-                     height={40} />
+            <BarChart data={data} margin={{ top: 24, right: 16, bottom: 8, left: 0 }}>
+              <CartesianGrid stroke="rgba(28,28,28,0.12)" vertical={false} />
+              <XAxis
+                dataKey="nombre"
+                hide={isMobile}
+                tick={{ fill: 'var(--text)', fontSize: 12 }}
+                axisLine={{ stroke: 'rgba(28,28,28,0.25)' }}
+                tickLine={false}
+                interval={0}
+                height={40}
+              />
               <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
                      axisLine={false} tickLine={false}
                      tickFormatter={(v) => `${v}%`} />
               <Tooltip
-                cursor={{ fill: 'rgba(28,28,28,0.05)' }}
-                contentStyle={{
-                  background: 'var(--bg)',
-                  border: '1px solid rgba(28,28,28,0.15)',
-                  borderRadius: 8,
-                  color: 'var(--text)',
-                }}
-                formatter={(value, _name, entry) => {
-                  const p = (entry as { payload?: { pct: number; margen: number } })?.payload
-                  if (!p) return typeof value === 'number' ? `${value.toFixed(2)}%` : String(value)
-                  return [`${p.pct.toFixed(2)}% ± ${p.margen.toFixed(2)} pp`, 'Proyección']
+                cursor={{ fill: 'rgba(28,28,28,0.06)' }}
+                content={({ active, payload }) => {
+                  if (!active || !payload || payload.length === 0) return null
+                  const p = payload[0].payload as {
+                    nombre: string; pct: number; margen: number; proy_100: number
+                  }
+                  return (
+                    <div className="bg-base border border-ink/25 rounded-md px-3 py-2 text-sm
+                                    shadow-md text-ink">
+                      <div className="font-medium mb-1">{p.nombre}</div>
+                      <div className="tabular-nums">
+                        {p.pct.toFixed(2)}% ± {p.margen.toFixed(2)} pp
+                      </div>
+                      <div className="tabular-nums text-muted text-xs mt-0.5">
+                        Votos proyectados: {fmtInt(p.proy_100)}
+                      </div>
+                    </div>
+                  )
                 }}
               />
               <Bar dataKey="pct" radius={[6, 6, 0, 0]}>
-                <ErrorBar dataKey="margen" width={6} strokeWidth={2} stroke="var(--text)" />
+                {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
                 <LabelList dataKey="pct"
                            position="top"
-                           formatter={(v) => typeof v === 'number' ? `${v.toFixed(1)}%` : ''}
+                           formatter={(v) => typeof v === 'number' ? `${v.toFixed(2)}%` : ''}
                            style={{ fill: 'var(--text)', fontSize: 11, fontWeight: 500 }} />
               </Bar>
             </BarChart>
@@ -71,11 +110,4 @@ export function ProjectionChart({ snapshot }: Props) {
       </div>
     </section>
   )
-}
-
-function shortName(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length <= 2) return name
-  // Primer nombre + primer apellido
-  return `${parts[0]} ${parts[parts.length - 2]}`
 }

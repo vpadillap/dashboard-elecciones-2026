@@ -4,32 +4,90 @@ import { fmtDate } from '../lib/format'
 interface Props {
   entries: SnapshotIndexEntry[]
   activeFilename: string | null
-  onSelect: (filename: string) => void
+  compareFilename: string | null
+  onSelectActive: (filename: string) => void
+  onSelectCompare: (filename: string | null) => void
 }
 
-export function SnapshotNavigator({ entries, activeFilename, onSelect }: Props) {
-  const active = entries.find(e => e.filename === activeFilename) ?? entries[0]
+function labelFor(e: SnapshotIndexEntry): string {
+  // ONPE publica el % con 3 decimales — mantenemos la misma precisión para que
+  // el usuario pueda emparejarlo con la UI oficial. Si por algún motivo no hay
+  // dato oficial, caemos al pct_pond_global calculado localmente (con ~).
+  const actas = e.actas_contabilizadas_onpe
+  const pct   = typeof actas === 'number' ? `${actas.toFixed(3)}%` :
+                (e.pct_pond_global != null ? `~${e.pct_pond_global.toFixed(1)}%` : '—')
+  return `${fmtDate(e.generated_at)} · ${pct} actas`
+}
+
+export function SnapshotNavigator({
+  entries, activeFilename, compareFilename, onSelectActive, onSelectCompare,
+}: Props) {
+  const active = entries.find(e => e.filename === activeFilename)
+  const activeIdx = entries.findIndex(e => e.filename === activeFilename)
+  // Las posibles comparaciones son solo capturas cronológicamente anteriores.
+  const compareOptions = activeIdx >= 0 ? entries.slice(activeIdx + 1) : []
+
   return (
-    <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-black/5 bg-base">
-      <label className="text-sm text-muted" htmlFor="snap-select">Captura:</label>
+    <div>
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="border-t border-b border-muted py-2.5 flex flex-col md:flex-row md:items-center gap-1 md:gap-6 text-xs">
+        <InlineSelect
+          label="Captura"
+          value={activeFilename ?? ''}
+          onChange={onSelectActive}
+          options={entries.map(e => ({ value: e.filename, label: labelFor(e) }))}
+        />
+
+        {compareOptions.length > 0 && (
+          <InlineSelect
+            label="Comparar con"
+            value={compareFilename ?? ''}
+            onChange={(v) => onSelectCompare(v || null)}
+            options={[
+              { value: '', label: 'Sin comparación' },
+              ...compareOptions.map(e => ({ value: e.filename, label: labelFor(e) })),
+            ]}
+          />
+        )}
+
+        {active && (
+          <span className="text-xs text-muted md:ml-auto">
+            <span className="font-semibold text-ink">Última captura:</span>{' '}
+            {fmtDate(active.generated_at)}
+          </span>
+        )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface InlineSelectProps {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}
+
+function InlineSelect({ label, value, onChange, options }: InlineSelectProps) {
+  const id = `snap-${label.replace(/\s+/g, '-').toLowerCase()}`
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <label htmlFor={id} className="font-semibold text-ink whitespace-nowrap">
+        {label}:
+      </label>
       <select
-        id="snap-select"
-        value={activeFilename ?? ''}
-        onChange={(e) => onSelect(e.target.value)}
-        className="min-h-[44px] rounded-md border border-ink/20 bg-base px-3 py-1.5 text-sm text-ink
-                   focus:outline-none focus:ring-2 focus:ring-ink/30"
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent text-ink pr-5 py-0.5
+                   focus:outline-none focus:ring-2 focus:ring-accent-neutral rounded cursor-pointer
+                   hover:underline"
       >
-        {entries.map(e => (
-          <option key={e.filename} value={e.filename}>
-            {fmtDate(e.generated_at)} · {e.pct_pond_global != null ? `${e.pct_pond_global.toFixed(1)}%` : '—'}
-          </option>
+        {options.map(o => (
+          <option key={o.value || '_none'} value={o.value}>{o.label}</option>
         ))}
       </select>
-      {active && (
-        <span className="text-xs text-muted">
-          Actualizado: <span className="text-ink font-medium">{fmtDate(active.generated_at)}</span>
-        </span>
-      )}
     </div>
   )
 }

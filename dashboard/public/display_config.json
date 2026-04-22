@@ -1,0 +1,7 @@
+{
+  "_comment": "Config editable por el administrador. `hero_comparison` define qué dos posiciones del ranking se comparan en el hero principal (1 = primero, 2 = segundo, etc.). Útil cuando la disputa está entre 2do y 3er lugar, por ejemplo.",
+  "hero_comparison": {
+    "candidate_a_position": 2,
+    "candidate_b_position": 3
+  }
+}

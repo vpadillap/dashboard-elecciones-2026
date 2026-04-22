@@ -18,7 +18,6 @@ export function MethodologyModal({ open, onClose }: Props) {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
       if (e.key === 'Tab') {
-        // Focus trap mínimo — mantiene el foco dentro del modal
         const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         )
@@ -45,8 +44,8 @@ export function MethodologyModal({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center
-                 bg-ink/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4
+                 bg-ink/50 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
@@ -55,9 +54,8 @@ export function MethodologyModal({ open, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="methodology-title"
-        className="relative w-full md:max-w-2xl max-h-[90svh] overflow-y-auto
-                   bg-base border border-black/10 rounded-t-2xl md:rounded-2xl
-                   shadow-lg p-5 md:p-7"
+        className="relative w-full md:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto
+                   bg-base rounded-2xl shadow-xl p-5 md:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -70,7 +68,7 @@ export function MethodologyModal({ open, onClose }: Props) {
             onClick={onClose}
             aria-label="Cerrar"
             className="rounded-full p-2 text-muted hover:bg-ink/5 focus:outline-none
-                       focus:ring-2 focus:ring-ink/30 min-h-[44px] min-w-[44px]
+                       focus:ring-2 focus:ring-accent-neutral min-h-[44px] min-w-[44px]
                        flex items-center justify-center"
           >
             <X size={20} aria-hidden="true" />
@@ -79,63 +77,86 @@ export function MethodologyModal({ open, onClose }: Props) {
 
         <div className="space-y-5 text-sm md:text-base text-ink leading-relaxed">
           <section>
-            <h3 className="font-semibold mb-1">De dónde salen los datos</h3>
+            <h3 className="text-ink font-semibold mb-1">De dónde salen los datos</h3>
             <p className="text-muted">
-              Los datos provienen directamente de la publicación oficial de la ONPE
-              (Oficina Nacional de Procesos Electorales). Cada cierto tiempo el
-              sistema recoge los resultados de todos los distritos del Perú y las
-              ciudades donde vota la comunidad peruana en el extranjero, y los
-              resume en esta página.
+              Un programa propio (script en Python) se conecta directamente a la
+              API pública de la ONPE cada vez que se genera una captura. Recorre
+              todos los distritos del Perú y las ciudades donde vota la comunidad
+              peruana en el extranjero, y para cada uno obtiene: los votos
+              válidos por candidato, el porcentaje de actas contabilizadas, y
+              también el padrón de electores hábiles de esa unidad. Tener el
+              padrón permite estimar con realismo el tamaño final de votos
+              emitidos incluso en zonas con muy pocas actas procesadas.
             </p>
           </section>
 
           <section>
-            <h3 className="font-semibold mb-1">¿Qué significa "proyección"?</h3>
+            <h3 className="text-ink font-semibold mb-1">¿Qué significa "proyección"?</h3>
             <p className="text-muted">
-              No todas las actas están contabilizadas cuando se publica un resultado.
-              La proyección es una estimación de cómo se verá el total final
-              asumiendo que las actas que faltan se parecerán a las que ya llegaron
-              de la misma zona. No es una predicción mágica: es una cuenta
-              estadística a partir de lo que ya sabemos.
+              No todas las actas están contabilizadas cuando se publica un
+              resultado. La proyección es una estimación de cómo se verá el
+              total final asumiendo que las actas que faltan se parecerán a las
+              que ya llegaron de la misma zona. No es una predicción mágica: es
+              una cuenta estadística a partir de lo que ya sabemos.
             </p>
           </section>
 
           <section>
-            <h3 className="font-semibold mb-1">¿Qué es el margen de error?</h3>
+            <h3 className="text-ink font-semibold mb-1">¿Qué es el margen de error?</h3>
             <p className="text-muted">
               El margen (± pp) mide cuánto podría variar el porcentaje final al
               cerrarse el conteo. Viene de dos fuentes: los distritos con muy
-              pocas actas aún (excluidos del cálculo directo) y la parte pendiente
-              de los distritos ya incluidos. Si un candidato aparece con 45% ± 1.2
-              pp significa que, con alta confianza, su resultado final estará entre
-              43.8% y 46.2%.
+              pocas actas aún (excluidos del cálculo directo) y la parte
+              pendiente de los distritos ya incluidos. Si un candidato aparece
+              con 45% ± 1.2 pp significa que, con alta confianza, su resultado
+              final estará entre 43.8% y 46.2%.
             </p>
           </section>
 
           <section>
-            <h3 className="font-semibold mb-1">¿Qué significa "P(orden final)"?</h3>
+            <h3 className="text-ink font-semibold mb-1">¿Qué significa "Prob. de que el orden se invierta"?</h3>
             <p className="text-muted">
-              Es la probabilidad de que el candidato A termine por encima del
-              candidato B al cerrarse el conteo, considerando todas las fuentes
-              de incertidumbre. Un 99% quiere decir que solo en 1 de cada 100
-              escenarios posibles el orden se invertiría. Un 60% significa que
-              el resultado es prácticamente una moneda al aire — cualquiera
-              podría ganar. No indica quién va ganando hoy (eso lo dice el %
-              estimado), sino qué tan firme es esa ventaja.
+              Es la probabilidad de que, al cerrarse el conteo, los dos
+              candidatos comparados terminen en el orden opuesto al que se
+              observa hoy. Considera todas las fuentes de incertidumbre: actas
+              pendientes, distritos con poca información y, cuando aplica, las
+              actas en revisión del JEE. Un 1% significa que solo en 1 de cada
+              100 escenarios posibles el orden cambiaría; un 40% significa que
+              la disputa está tan apretada que el orden puede cambiar en
+              cualquier dirección. No indica quién va ganando hoy (eso lo dice
+              el % estimado), sino qué tan firme es esa ventaja frente a lo que
+              aún falta contar.
             </p>
           </section>
 
           <section>
-            <h3 className="font-semibold mb-1">¿Por qué se excluyen algunos distritos?</h3>
+            <h3 className="text-ink font-semibold mb-1">¿Por qué se excluyen algunos distritos?</h3>
             <p className="text-muted">
               Los distritos con menos del 10% de actas contabilizadas se dejan
-              fuera del cálculo directo porque sus datos todavía son muy pocos y
-              podrían distorsionar la proyección. No se pierden: su peso estimado
-              se suma al margen de error, para que el resultado final refleje que
-              todavía hay información pendiente. Adicionalmente, cuando existen
+              fuera del cálculo directo porque sus datos todavía son muy pocos
+              y podrían distorsionar la proyección. No se pierden: su peso
+              estimado se suma al margen de error, para que el resultado final
+              refleje que todavía hay información pendiente. Cuando existen
               actas impugnadas (en revisión por el JEE) se muestra una columna
               separada con el margen considerando el riesgo de que alguna sea
               anulada.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-ink font-semibold mb-1">¿Por qué no mostramos un gráfico de evolución en el tiempo?</h3>
+            <p className="text-muted">
+              Podría parecer útil dibujar una línea con cómo cambia el porcentaje
+              de cada candidato a medida que llegan más votos, pero
+              estadísticamente es un modelo engañoso. El orden en que llegan las
+              actas no es aleatorio: Lima puede procesar más rápido que Puno, el
+              extranjero llega al final, algunas regiones rurales tardan más.
+              Eso significa que una línea creciente o decreciente puede
+              simplemente reflejar de qué región vienen los votos que acaban de
+              llegar — no un cambio real en la intención de voto, que ya ocurrió
+              el día de la elección. Mostrar esa línea induciría a leer
+              "tendencia" donde solo hay orden de procesamiento. Lo
+              estadísticamente honesto es la captura actual con su margen.
             </p>
           </section>
         </div>
