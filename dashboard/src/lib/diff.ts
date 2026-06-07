@@ -24,7 +24,6 @@ export interface CandidateDiff {
   margen_pp:       Delta
   proy_100:        Delta
   votos_actuales:  Delta
-  margen_jee_pp?:  Delta
 }
 
 export interface KPIDiffs {
@@ -42,16 +41,12 @@ export interface Diff {
 }
 
 function diffCandidate(curr: Candidate, prev?: Candidate): CandidateDiff {
-  const d: CandidateDiff = {
+  return {
     pct_est:        toDelta(curr.pct_est,        prev?.pct_est),
     margen_pp:      toDelta(curr.margen_pp,      prev?.margen_pp),
     proy_100:       toDelta(curr.proy_100,       prev?.proy_100),
     votos_actuales: toDelta(curr.votos_actuales, prev?.votos_actuales),
   }
-  if (curr.margen_jee_pp != null) {
-    d.margen_jee_pp = toDelta(curr.margen_jee_pp, prev?.margen_jee_pp)
-  }
-  return d
 }
 
 export function computeDiff(current: Snapshot, previous?: Snapshot): Diff {

@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-04T08:54:50-05:00",
+  "id_eleccion": "10",
+  "ronda": 1,
+  "kpis": {
+    "peru_inc": 1891,
+    "peru_exc": 1,
+    "ext_inc": 210,
+    "ext_exc": 0,
+    "votos_actuales": 16413375,
+    "proy_total": 16761255,
+    "pct_pond_inc": 97.89,
+    "pct_pond_global": 97.89,
+    "actas_jee": 2049,
+    "votos_jee_est": 347733,
+    "electores_habiles": 27325432,
+    "actas_contabilizadas_onpe": 97.789
+  },
+  "candidatos": [
+    {
+      "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "partido": "FUERZA POPULAR",
+      "votos_actuales": 2811747,
+      "proy_100": 2879024,
+      "pct_est": 17.18,
+      "margen_pp": 0.08,
+      "margen_jee_pp": 0.08
+    },
+    {
+      "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "partido": "JUNTOS POR EL PERÚ",
+      "votos_actuales": 1976734,
+      "proy_100": 2015357,
+      "pct_est": 12.02,
+      "margen_pp": 0.05,
+      "margen_jee_pp": 0.1
+    },
+    {
+      "nombre": "RAFAEL BERNARDO LÓPEZ ALIAGA CAZORLA",
+      "partido": "RENOVACIÓN POPULAR",
+      "votos_actuales": 1950243,
+      "proy_100": 1996489,
+      "pct_est": 11.91,
+      "margen_pp": 0.22,
+      "margen_jee_pp": 0.25
+    },
+    {
+      "nombre": "JORGE NIETO MONTESINOS",
+      "partido": "PARTIDO DEL BUEN GOBIERNO",
+      "votos_actuales": 1803306,
+      "proy_100": 1840073,
+      "pct_est": 10.98,
+      "margen_pp": 0.06,
+      "margen_jee_pp": 0.07
+    },
+    {
+      "nombre": "RICARDO PABLO BELMONT CASSINELLI",
+      "partido": "PARTIDO CÍVICO OBRAS",
+      "votos_actuales": 1666803,
+      "proy_100": 1700180,
+      "pct_est": 10.14,
+      "margen_pp": 0.07,
+      "margen_jee_pp": 0.07
+    },
+    {
+      "nombre": "CARLOS GONSALO ALVAREZ LOAYZA",
+      "partido": "PARTIDO PAÍS PARA TODOS",
+      "votos_actuales": 1298288,
+      "proy_100": 1328050,
+      "pct_est": 7.92,
+      "margen_pp": 0.05,
+      "margen_jee_pp": 0.05
+    },
+    {
+      "nombre": "PABLO ALFONSO LOPEZ CHAU NAVA",
+      "partido": "AHORA NACIÓN - AN",
+      "votos_actuales": 1199504,
+      "proy_100": 1222158,
+      "pct_est": 7.29,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "MARIA SOLEDAD PEREZ TELLO",
+      "partido": "PRIMERO LA GENTE – COMUNIDAD, ECOLOGÍA, LIBERTAD Y PROGRESO",
+      "votos_actuales": 560868,
+      "proy_100": 572063,
+      "pct_est": 3.41,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ALFONSO CARLOS ESPA Y GARCES-ALVEAR",
+      "partido": "PARTIDO SICREO",
+      "votos_actuales": 550849,
+      "proy_100": 561362,
+      "pct_est": 3.35,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "LUIS FERNANDO OLIVERA VEGA",
+      "partido": "PARTIDO FRENTE DE LA ESPERANZA 2021",
+      "votos_actuales": 302706,
+      "proy_100": 307875,
+      "pct_est": 1.84,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "JOSE LEON LUNA GALVEZ",
+      "partido": "PODEMOS PERÚ",
+      "votos_actuales": 261290,
+      "proy_100": 266776,
+      "pct_est": 1.59,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "YONHY LESCANO ANCIETA",
+      "partido": "PARTIDO POLÍTICO COOPERACIÓN POPULAR",
+      "votos_actuales": 211889,
+      "proy_100": 214775,
+      "pct_est": 1.28,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "CESAR ACUÑA PERALTA",
+      "partido": "ALIANZA PARA EL PROGRESO",
+      "votos_actuales": 187937,
+      "proy_100": 192334,
+      "pct_est": 1.15,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "PITTER ENRIQUE VALDERRAMA PEÑA",
+      "partido": "PARTIDO APRISTA PERUANO",
+      "votos_actuales": 158363,
+      "proy_100": 161326,
+      "pct_est": 0.96,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "GEORGE PATRICK FORSYTH SOMMER",
+      "partido": "PARTIDO DEMOCRÁTICO SOMOS PERÚ",
+      "votos_actuales": 148264,
+      "proy_100": 153263,
+      "pct_est": 0.91,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "MARIO ENRIQUE VIZCARRA CORNEJO",
+      "partido": "PARTIDO POLÍTICO PERÚ PRIMERO",
+      "votos_actuales": 141016,
+      "proy_100": 144196,
+      "pct_est": 0.86,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "HERBERT CALLER GUTIERREZ",
+      "partido": "PARTIDO PATRIÓTICO DEL PERÚ",
+      "votos_actuales": 141411,
+      "proy_100": 144159,
+      "pct_est": 0.86,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "RONALD DARWIN ATENCIO SOTOMAYOR",
+      "partido": "ALIANZA ELECTORAL VENCEREMOS",
+      "votos_actuales": 137810,
+      "proy_100": 140091,
+      "pct_est": 0.84,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ROSARIO DEL PILAR FERNANDEZ BAZAN",
+      "partido": "UN CAMINO DIFERENTE",
+      "votos_actuales": 126679,
+      "proy_100": 127997,
+      "pct_est": 0.76,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "CHARLIE CARRASCO SALAZAR",
+      "partido": "PARTIDO DEMÓCRATA UNIDO PERÚ",
+      "votos_actuales": 116590,
+      "proy_100": 118939,
+      "pct_est": 0.71,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "VLADIMIR ROY CERRON ROJAS",
+      "partido": "PARTIDO POLÍTICO NACIONAL PERÚ LIBRE",
+      "votos_actuales": 98283,
+      "proy_100": 100042,
+      "pct_est": 0.6,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "MESIAS ANTONIO GUEVARA AMASIFUEN",
+      "partido": "PARTIDO MORADO",
+      "votos_actuales": 80608,
+      "proy_100": 82193,
+      "pct_est": 0.49,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ROBERTO ENRIQUE CHIABRA LEON",
+      "partido": "UNIDAD NACIONAL",
+      "votos_actuales": 66500,
+      "proy_100": 67953,
+      "pct_est": 0.41,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "PAUL DAVIS JAIMES BLANCO",
+      "partido": "PROGRESEMOS",
+      "votos_actuales": 64579,
+      "proy_100": 66039,
+      "pct_est": 0.39,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "WOLFGANG MARIO GROZO COSTA",
+      "partido": "PARTIDO POLÍTICO INTEGRIDAD DEMOCRÁTICA",
+      "votos_actuales": 62404,
+      "proy_100": 63722,
+      "pct_est": 0.38,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ALEX GONZALES CASTILLO",
+      "partido": "PARTIDO DEMÓCRATA VERDE",
+      "votos_actuales": 62621,
+      "proy_100": 64010,
+      "pct_est": 0.38,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "RAFAEL JORGE BELAUNDE LLOSA",
+      "partido": "LIBERTAD POPULAR",
+      "votos_actuales": 40000,
+      "proy_100": 40844,
+      "pct_est": 0.24,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "JOSE DANIEL WILLIAMS ZAPATA",
+      "partido": "AVANZA PAÍS - PARTIDO DE INTEGRACIÓN SOCIAL",
+      "votos_actuales": 31961,
+      "proy_100": 32611,
+      "pct_est": 0.19,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "FRANCISCO ERNESTO DIEZ-CANSECO TÁVARA",
+      "partido": "PARTIDO POLÍTICO PERÚ ACCIÓN",
+      "votos_actuales": 30998,
+      "proy_100": 31635,
+      "pct_est": 0.19,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "FIORELLA GIANNINA MOLINELLI ARISTONDO",
+      "partido": "FUERZA Y LIBERTAD",
+      "votos_actuales": 26669,
+      "proy_100": 27209,
+      "pct_est": 0.16,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ALVARO GONZALO PAZ DE LA BARRA FREIGEIRO",
+      "partido": "FE EN EL PERÚ",
+      "votos_actuales": 22860,
+      "proy_100": 23332,
+      "pct_est": 0.14,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ARMANDO JOAQUIN MASSE FERNANDEZ",
+      "partido": "PARTIDO DEMOCRATICO FEDERAL",
+      "votos_actuales": 21312,
+      "proy_100": 21732,
+      "pct_est": 0.13,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "ANTONIO ORTIZ VILLANO",
+      "partido": "SALVEMOS AL PERÚ",
+      "votos_actuales": 17239,
+      "proy_100": 17618,
+      "pct_est": 0.11,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "WALTER GILMER CHIRINOS PURIZAGA",
+      "partido": "PARTIDO POLÍTICO PRIN",
+      "votos_actuales": 14244,
+      "proy_100": 14554,
+      "pct_est": 0.09,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "NAPOLEON BECERRA GARCIA",
+      "partido": "PARTIDO DE LOS TRABAJADORES Y EMPRENDEDORES PTE - PERÚ",
+      "votos_actuales": 11227,
+      "proy_100": 11464,
+      "pct_est": 0.07,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    },
+    {
+      "nombre": "CARLOS ERNESTO JAICO CARRANZA",
+      "partido": "PERÚ MODERNO",
+      "votos_actuales": 9573,
+      "proy_100": 9810,
+      "pct_est": 0.06,
+      "margen_pp": 0.04,
+      "margen_jee_pp": 0.04
+    }
+  ],
+  "comparaciones": [
+    {
+      "a": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "b": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "diff_pp": 5.16,
+      "p_orden_final": 1.0
+    },
+    {
+      "a": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "b": "RAFAEL BERNARDO LÓPEZ ALIAGA CAZORLA",
+      "diff_pp": 0.11,
+      "p_orden_final": 0.8321
+    },
+    {
+      "a": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "b": "RAFAEL BERNARDO LÓPEZ ALIAGA CAZORLA",
+      "diff_pp": 5.27,
+      "p_orden_final": 1.0
+    }
+  ],
+  "metodologia": {
+    "min_pct_proyeccion": 10.0,
+    "sigma_min": 0.02,
+    "fuentes_varianza": [
+      "excluidas",
+      "fraccion_restante_incluidas",
+      "jee_anulacion_opcional"
+    ]
+  }
+}

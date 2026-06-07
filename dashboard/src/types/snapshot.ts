@@ -8,7 +8,6 @@ export interface Candidate {
   proy_100: number
   pct_est: number
   margen_pp: number
-  margen_jee_pp?: number
 }
 
 export interface Comparison {

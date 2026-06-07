@@ -76,6 +76,11 @@ MIN_PCT_PROYECCION = 10.0
 # 0.02 = 2 pp: reconoce que distritos excluidos (más rurales/remotos) pueden
 # comportarse diferente a los incluidos aunque internamente sean similares.
 SIGMA_MIN = 0.02
+# Piso de sigma específico para la COLA (fracción restante de distritos ya
+# incluidos). Cuando un distrito ya tiene 95–99% contado, la incertidumbre
+# relevante es acta-a-acta dentro del distrito, no distrito-a-distrito; por eso
+# el piso es mucho más bajo que SIGMA_MIN. 0.005 = 0.5 pp.
+SIGMA_MIN_TAIL = 0.005
 
 
 class ONPEScraper:
@@ -685,7 +690,13 @@ class ONPEScraper:
         # Las actas aún no contadas de los distritos incluidos también contribuyen
         # a la incertidumbre. A 100% procesado V_restante=0 → contribución nula.
 
-        prov_inc_V_rem = {}
+        # Para la cola de distritos ya incluidos guardamos también el factor de
+        # cobertura ponderado (frac_rest_avg) por bloque provincial. Cuanto más
+        # avanzado está un bloque, más se amortigua su contribución de varianza:
+        # la cola de un distrito casi cerrado se parece a la distribución ya
+        # observada del propio distrito, no a la dispersión entre distritos.
+        prov_inc_V_rem      = {}
+        prov_inc_V_rem_wfr  = {}   # Σ V_rem · frac_rest (numerador del promedio)
         for row in meta[mask_inc].itertuples():
             if row.total_emitidos_parc <= 0 or row.pct_procesado >= 100.0:
                 continue
@@ -693,27 +704,25 @@ class ONPEScraper:
             frac_rest = 1.0 - row.pct_procesado / 100.0
             emit_est  = row.total_emitidos_parc / (row.pct_procesado / 100.0)
             V_rem = emit_est * _vr_cascade(row.ambito, row.region_cont, row.prov_pais) * frac_rest
-            prov_inc_V_rem[key] = prov_inc_V_rem.get(key, 0.0) + V_rem
+            prov_inc_V_rem[key]     = prov_inc_V_rem.get(key, 0.0)     + V_rem
+            prov_inc_V_rem_wfr[key] = prov_inc_V_rem_wfr.get(key, 0.0) + V_rem * frac_rest
 
         for (ambito, region_cont, prov_pais), V_rem_total in prov_inc_V_rem.items():
             if V_rem_total <= 0:
                 continue
+            # frac_rest promedio ponderado por V_rem del bloque (∈ (0, 1]).
+            frac_rest_avg = prov_inc_V_rem_wfr[(ambito, region_cont, prov_pais)] / V_rem_total
             for cand in all_candidates:
                 _, sigma = _sigma_cascade(ambito, region_cont, prov_pais, cand)
-                varianza[cand] += (sigma * V_rem_total) ** 2  # sin delta: proyección ya estima
+                # Sigma efectivo para la cola: piso bajo (acta-a-acta, no
+                # distrito-a-distrito) y amortiguación adicional por avance.
+                sigma_eff = max(min(sigma, sigma * frac_rest_avg), SIGMA_MIN_TAIL)
+                varianza[cand] += (sigma_eff * V_rem_total) ** 2  # sin delta: proyección ya estima
 
-        # ── Actas IMPUGNADAS (enviadas al JEE) — volumen por bloque provincial ─────
-        # Las actas impugnadas NO están contabilizadas, por lo que su resolución
-        # puede tener tres resultados:
-        #   - Confirmadas: se añaden con su distribución original → proporciones estables
-        #   - Rectificadas: se corrigen (error aritmético) → proporciones prácticamente igual
-        #   - Anuladas: desaparecen → el peso del distrito baja, pero proporciones internas
-        #               no cambian. Solo afecta el porcentaje nacional si ese distrito
-        #               tiene una distribución distinta al promedio.
-        # La fuente 2 (fracción restante) ya captura la incertidumbre de votos pendientes.
-        # El riesgo adicional JEE es solo el SWING por pérdida de peso diferencial
-        # en caso de anulación → se modela aparte como columna "Margen+JEE".
-
+        # ── Volumen de actas IMPUGNADAS (solo informativo) ─────────────────────
+        # Las actas impugnadas NO están contabilizadas; ya están reflejadas en
+        # la fuente 2 (fracción restante de incluidas) como votos pendientes.
+        # Aquí solo se totaliza para reportar el KPI de "Actas impugnadas".
         prov_jee_V = {}
         for row in meta[mask_inc].itertuples():
             if row.actas_enviadas_jee <= 0 or row.actas_contabilizadas <= 0:
@@ -736,31 +745,6 @@ class ONPEScraper:
         resumen['Margen ± pp']= (1.96 * resumen['var_total'] ** 0.5 / max(total_corr, 1) * 100).round(2)
         # Guardar varianza total antes del drop — necesario para cálculo de potencia
         _var_total = resumen.set_index('candidato')['var_total'].to_dict()
-
-        # ── Columna adicional: Margen+JEE (considera posible anulación de actas) ──
-        # Si un acta es anulada, ese distrito pierde peso en el total nacional.
-        # El swing para candidato C en bloque provincial k:
-        #   efecto_neto_C = (mu_C_k − pct_C_nac) × V_jee_k
-        # Incertidumbre modelada como Bernoulli(p=0.5) → varianza máxima:
-        #   var_jee_C += 0.25 × efecto_neto_C²
-        # Solo es relevante cuando los distritos con impugnaciones tienen
-        # distribución muy diferente al promedio nacional.
-        if prov_jee_V:
-            pct_est_frac = (resumen.set_index('candidato')['% Est.'] / 100.0).to_dict()
-            jee_var = {c: 0.0 for c in all_candidates}
-            for (ambito, region_cont, prov_pais), V_jee_total in prov_jee_V.items():
-                if V_jee_total <= 0:
-                    continue
-                for cand in all_candidates:
-                    mu, _ = _sigma_cascade(ambito, region_cont, prov_pais, cand)
-                    net = (mu - pct_est_frac.get(cand, 0.0)) * V_jee_total
-                    jee_var[cand] += 0.25 * net * net
-            resumen['_var_jee'] = resumen['candidato'].map(jee_var).fillna(0.0)
-            resumen['Margen+JEE ± pp'] = (
-                1.96 * (resumen['var_total'] + resumen['_var_jee']) ** 0.5
-                / max(total_corr, 1) * 100
-            ).round(2)
-            resumen.drop(columns=['_var_jee'], inplace=True)
 
         resumen.drop(columns=['delta_exc', 'var_total', '_proy_corr'], inplace=True)
         resumen = resumen.sort_values('% Est.', ascending=False)
@@ -830,9 +814,6 @@ class ONPEScraper:
         print("PROYECCIÓN NACIONAL (Top 15 candidatos):")
         _cols_tabla    = ['candidato', 'votos_actuales', 'Proy. @ 100%', '% Est.', 'Margen ± pp']
         _headers_tabla = ['Candidato',  'Votos actuales', 'Proy. @ 100%', '% Est.', 'Margen ± pp']
-        if 'Margen+JEE ± pp' in resumen.columns:
-            _cols_tabla.append('Margen+JEE ± pp')
-            _headers_tabla.append('Margen+JEE ± pp')
         print(tabulate(
             resumen.head(15)[_cols_tabla],
             headers=_headers_tabla,
@@ -938,23 +919,19 @@ class ONPEScraper:
 
      B) Fracción NO CONTABILIZADA de unidades INCLUIDAS:
           V_restante_U = emitidos_final_est × valid_rate × (1 - pct_U/100)
-          var_C       += (sigma_C × V_restante_U)²
+          sigma_eff    = max(min(sigma_C, sigma_C × frac_rest_avg_block),
+                             SIGMA_MIN_TAIL)
+          var_C       += (sigma_eff × V_restante_U)²
         Sin delta: la proyección ya estima el punto central para estas unidades.
-        A 100% procesado V_restante = 0 → contribución nula.
+        A 100% procesado V_restante = 0 → contribución nula. La amortiguación
+        por (1 − pct/100) refleja que la cola de un distrito casi cerrado se
+        parece a su propia distribución observada (acta-a-acta), no a la
+        dispersión entre distritos. SIGMA_MIN_TAIL ≪ SIGMA_MIN.
 
-     C) Actas IMPUGNADAS (columna separada "Margen+JEE ± pp"):
-        Las actas enviadas al JEE no están contabilizadas. Su resolución puede ser:
-          • Confirmadas/rectificadas → se agregan con distribución ≈ la del distrito
-            → proporciones nacionales prácticamente sin cambio.
-          • Anuladas → desaparecen del total → el peso del distrito baja.
-            El único efecto real es el swing por diferencia entre la distribución
-            del distrito y el promedio nacional:
-              efecto_C = (mu_C_prov − pct_C_nac) × V_jee_bloque
-        Modelado como Bernoulli(p=0.5) — máxima incertidumbre sobre si se anula:
-              var_jee_C += 0.25 × efecto_C²
-        Se suma a var_total solo en la columna "Margen+JEE ± pp" para separar
-        este riesgo del margen base. Si "Margen+JEE" ≈ "Margen" las impugnaciones
-        no son materiales; si difieren, el distrito impugnado sesga el resultado.
+     Las actas impugnadas no se modelan aparte: ya están contadas como
+     pendientes en B (no figuran en actas_contabilizadas → suman a la fracción
+     restante de su distrito). Su eventual anulación no se suma como swing
+     adicional porque, en la práctica, distorsiona poco el porcentaje nacional.
 
      El prior de voto para sigma se obtiene por cascada de 3 niveles:
        Nivel 1: misma provincia/país    (más homogéneo estratégicamente)
@@ -1071,8 +1048,7 @@ class ONPEScraper:
             snap_metodologia = {
                 "min_pct_proyeccion": MIN_PCT_PROYECCION,
                 "sigma_min":          SIGMA_MIN,
-                "fuentes_varianza":   ["excluidas", "fraccion_restante_incluidas",
-                                       "jee_anulacion_opcional"],
+                "fuentes_varianza":   ["excluidas", "fraccion_restante_incluidas"],
             }
 
             snapshot = _build_snapshot(resumen, snap_kpis, snap_comparaciones,
@@ -1091,7 +1067,6 @@ def _build_snapshot(resumen: pd.DataFrame,
                     metodologia: dict,
                     generated_at: str) -> dict:
     """Construye el payload v1 a partir del resumen y KPIs ya calculados."""
-    has_jee = 'Margen+JEE ± pp' in resumen.columns
     candidatos = []
     for _, row in resumen.iterrows():
         c = {
@@ -1102,8 +1077,6 @@ def _build_snapshot(resumen: pd.DataFrame,
             "pct_est":        float(row['% Est.']),
             "margen_pp":      float(row['Margen ± pp']),
         }
-        if has_jee and pd.notna(row.get('Margen+JEE ± pp')):
-            c["margen_jee_pp"] = float(row['Margen+JEE ± pp'])
         candidatos.append(c)
     return {
         "schema_version": SCHEMA_VERSION,

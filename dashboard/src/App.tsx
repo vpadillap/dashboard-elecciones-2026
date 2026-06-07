@@ -46,20 +46,16 @@ export default function App() {
           return
         }
         const resolveName = buildResolver(dict)
-        const latest      = index.snapshots[0]
-        const previous    = index.snapshots[1] ?? null
-        const [current, prev] = await Promise.all([
-          fetchSnapshot(latest.filename),
-          previous ? fetchSnapshot(previous.filename) : Promise.resolve(null),
-        ])
+        const latest  = index.snapshots[0]
+        const current = await fetchSnapshot(latest.filename)
         if (cancelled) return
         setState({
           kind: 'ready',
           index,
           current,
-          previous: prev,
+          previous: null,
           activeFilename:  latest.filename,
-          compareFilename: previous?.filename ?? null,
+          compareFilename: null,
           resolveName,
           config,
         })
@@ -155,7 +151,7 @@ export default function App() {
             onSelectCompare={selectCompare}
           />
           <main className="flex-1">
-            <HeroComparison snapshot={state.current} diff={diff} resolveName={state.resolveName} config={state.config.hero_comparison} />
+            <HeroComparison snapshot={state.current} previous={state.previous} diff={diff} resolveName={state.resolveName} config={state.config.hero_comparison} />
             <KPIBar snapshot={state.current} diff={diff} />
             <ProjectionChart snapshot={state.current} resolveName={state.resolveName} />
             {state.current.candidatos.length > 2 && (

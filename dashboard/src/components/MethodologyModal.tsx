@@ -104,12 +104,14 @@ export function MethodologyModal({ open, onClose }: Props) {
           <section>
             <h3 className="text-ink font-semibold mb-1">¿Qué es el margen de error?</h3>
             <p className="text-muted">
-              El margen (± pp) mide cuánto podría variar el porcentaje final al
-              cerrarse el conteo. Viene de dos fuentes: los distritos con muy
-              pocas actas aún (excluidos del cálculo directo) y la parte
-              pendiente de los distritos ya incluidos. Si un candidato aparece
-              con 45% ± 1.2 pp significa que, con alta confianza, su resultado
-              final estará entre 43.8% y 46.2%.
+              El margen de error (± pp) mide cuánto podría variar el porcentaje
+              final al cerrarse el conteo. Viene de dos fuentes: los distritos
+              con muy pocas actas aún (excluidos del cálculo directo) y la parte
+              pendiente de los distritos ya incluidos. Esa parte pendiente
+              incluye también las actas que están en revisión del JEE: hasta que
+              se resuelvan se cuentan como votos todavía por contabilizar. Si
+              un candidato aparece con 45% ± 1.2 pp significa que, con alta
+              confianza, su resultado final estará entre 43.8% y 46.2%.
             </p>
           </section>
 
@@ -136,10 +138,7 @@ export function MethodologyModal({ open, onClose }: Props) {
               fuera del cálculo directo porque sus datos todavía son muy pocos
               y podrían distorsionar la proyección. No se pierden: su peso
               estimado se suma al margen de error, para que el resultado final
-              refleje que todavía hay información pendiente. Cuando existen
-              actas impugnadas (en revisión por el JEE) se muestra una columna
-              separada con el margen considerando el riesgo de que alguna sea
-              anulada.
+              refleje que todavía hay información pendiente.
             </p>
           </section>
 

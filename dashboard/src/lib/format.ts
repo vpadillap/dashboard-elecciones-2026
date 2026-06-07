@@ -23,9 +23,10 @@ export const fmtDate = (iso: string) => {
 // explícitamente. El tono es deterministico, sin frases vendedoras ni
 // absolutismos: describe probabilidades, no hechos.
 export function inversionInsight(pInvert: number, leaderName: string): string {
+  if (pInvert <= 0)    return `La diferencia ya no puede revertirse: ${leaderName} terminará por delante.`
   if (pInvert <= 0.05) return `${leaderName} terminaría por delante en prácticamente todos los escenarios posibles.`
-  if (pInvert <= 0.10) return `${leaderName} tiene una probabilidad muy alta de terminar por delante al finalizar el conteo.`
-  if (pInvert <= 0.25) return `${leaderName} tiene mejores probabilidades de terminar delante, pero aún no se puede asegurar con certeza.`
-  if (pInvert <= 0.40) return `Es levemente más probable que ${leaderName} termine delante, pero es posible que el orden cambie.`
+  if (pInvert <= 0.15) return `Es estadísticamente improbable que ${leaderName} termine por debajo al finalizar el conteo.`
+  if (pInvert <= 0.30) return `Es mucho más probable que ${leaderName} termine delante, pero aún no hay certeza absoluta.`
+  if (pInvert <= 0.40) return `Es más probable que ${leaderName} termine delante, pero es técnicamente posible que el orden cambie.`
   return 'Las probabilidades de quedar por delante son similares para ambos candidatos; el orden final podría ir en cualquier dirección.'
 }

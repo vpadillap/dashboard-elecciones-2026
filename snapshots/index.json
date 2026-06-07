@@ -1,13 +1,211 @@
 {
   "snapshots": [
     {
-      "filename": "snapshot_20260419_121441.json",
-      "generated_at": "2026-04-19T12:14:41-05:00",
+      "filename": "snapshot_20260504_085450.json",
+      "generated_at": "2026-05-04T08:54:50-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 97.89,
+      "actas_contabilizadas_onpe": 97.789
+    },
+    {
+      "filename": "snapshot_20260501_183955.json",
+      "generated_at": "2026-05-01T18:39:55-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 97.56,
+      "actas_contabilizadas_onpe": 97.443
+    },
+    {
+      "filename": "snapshot_20260430_112845.json",
+      "generated_at": "2026-04-30T11:28:45-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 97.17,
+      "actas_contabilizadas_onpe": 97.02
+    },
+    {
+      "filename": "snapshot_20260429_094702.json",
+      "generated_at": "2026-04-29T09:47:02-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 96.88,
+      "actas_contabilizadas_onpe": 96.73
+    },
+    {
+      "filename": "snapshot_20260428_080724.json",
+      "generated_at": "2026-04-28T08:07:24-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 96.47,
+      "actas_contabilizadas_onpe": 96.323
+    },
+    {
+      "filename": "snapshot_20260427_144603.json",
+      "generated_at": "2026-04-27T14:46:03-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 96.31,
+      "actas_contabilizadas_onpe": 96.159
+    },
+    {
+      "filename": "snapshot_20260426_133433.json",
+      "generated_at": "2026-04-26T13:34:33-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 96.04,
+      "actas_contabilizadas_onpe": 95.882
+    },
+    {
+      "filename": "snapshot_20260425_154102.json",
+      "generated_at": "2026-04-25T15:41:02-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 95.76,
+      "actas_contabilizadas_onpe": 95.585
+    },
+    {
+      "filename": "snapshot_20260424_213343.json",
+      "generated_at": "2026-04-24T21:33:43-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 95.6,
+      "actas_contabilizadas_onpe": 95.427
+    },
+    {
+      "filename": "snapshot_20260424_090503.json",
+      "generated_at": "2026-04-24T09:05:03-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 95.32,
+      "actas_contabilizadas_onpe": 95.125
+    },
+    {
+      "filename": "snapshot_20260423_181403.json",
+      "generated_at": "2026-04-23T18:14:03-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 95.09,
+      "actas_contabilizadas_onpe": 94.868
+    },
+    {
+      "filename": "snapshot_20260423_145203.json",
+      "generated_at": "2026-04-23T14:52:03-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 95.02,
+      "actas_contabilizadas_onpe": 94.794
+    },
+    {
+      "filename": "snapshot_20260423_105523.json",
+      "generated_at": "2026-04-23T10:55:23-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 94.87,
+      "actas_contabilizadas_onpe": 94.645
+    },
+    {
+      "filename": "snapshot_20260422_103339.json",
+      "generated_at": "2026-04-22T10:33:39-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 94.55,
+      "actas_contabilizadas_onpe": 94.294
+    },
+    {
+      "filename": "snapshot_20260421_144356.json",
+      "generated_at": "2026-04-21T14:43:56-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 94.18,
+      "actas_contabilizadas_onpe": 93.905
+    },
+    {
+      "filename": "snapshot_20260420_194733.json",
+      "generated_at": "2026-04-20T19:47:33-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 94.03,
+      "actas_contabilizadas_onpe": 93.733
+    },
+    {
+      "filename": "snapshot_20260420_132906.json",
+      "generated_at": "2026-04-20T13:29:06-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.88,
+      "actas_contabilizadas_onpe": 93.585
+    },
+    {
+      "filename": "snapshot_20260420_074235.json",
+      "generated_at": "2026-04-20T07:42:35-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.87,
+      "actas_contabilizadas_onpe": 93.57
+    },
+    {
+      "filename": "snapshot_20260419_151850.json",
+      "generated_at": "2026-04-19T15:18:50-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.79,
+      "actas_contabilizadas_onpe": 93.492
+    },
+    {
+      "filename": "snapshot_20260419_123950.json",
+      "generated_at": "2026-04-19T12:39:50-05:00",
       "id_eleccion": "10",
       "ronda": 1,
       "schema_version": 1,
       "pct_pond_global": 93.78,
       "actas_contabilizadas_onpe": 93.486
+    },
+    {
+      "filename": "snapshot_20260419_094015.json",
+      "generated_at": "2026-04-19T09:40:15-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.78,
+      "actas_contabilizadas_onpe": 93.484
+    },
+    {
+      "filename": "snapshot_20260418_225655.json",
+      "generated_at": "2026-04-18T22:56:55-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.78,
+      "actas_contabilizadas_onpe": 93.483
+    },
+    {
+      "filename": "snapshot_20260418_203910.json",
+      "generated_at": "2026-04-18T20:39:10-05:00",
+      "id_eleccion": "10",
+      "ronda": 1,
+      "schema_version": 1,
+      "pct_pond_global": 93.78,
+      "actas_contabilizadas_onpe": 93.481
     },
     {
       "filename": "snapshot_20260418_184238.json",
