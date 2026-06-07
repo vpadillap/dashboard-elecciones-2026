@@ -7,8 +7,9 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { fmtInt, fmtPP } from '../lib/format'
 
 interface Props {
-  snapshot: Snapshot
-  diff: Diff
+  snapshot:    Snapshot
+  previous?:   Snapshot | null
+  diff:        Diff
   resolveName: NameResolver
 }
 
@@ -29,9 +30,31 @@ function DiffSlot({
   )
 }
 
-export function FullTable({ snapshot, diff, resolveName }: Props) {
+export function FullTable({ snapshot, previous, diff, resolveName }: Props) {
   const [open, setOpen] = useState(false)
   const rows = snapshot.candidatos
+  const totalContabilizados = snapshot.kpis.votos_actuales
+  const pctActual = (c: Snapshot['candidatos'][number]) =>
+    totalContabilizados > 0 ? (c.votos_actuales / totalContabilizados) * 100 : 0
+
+  const prevTotal = previous?.kpis.votos_actuales ?? 0
+  const prevByName = new Map<string, Snapshot['candidatos'][number]>()
+  if (previous) for (const c of previous.candidatos) prevByName.set(c.nombre, c)
+
+  function pctActualDelta(c: Snapshot['candidatos'][number]): Delta | undefined {
+    if (!previous || prevTotal <= 0) return undefined
+    const prev = prevByName.get(c.nombre)
+    if (!prev) return undefined
+    const current  = pctActual(c)
+    const previousV = (prev.votos_actuales / prevTotal) * 100
+    const delta = current - previousV
+    return {
+      current,
+      previous: previousV,
+      delta,
+      direction: delta > 0 ? 1 : delta < 0 ? -1 : 0,
+    }
+  }
 
   return (
     <section>
@@ -76,12 +99,22 @@ export function FullTable({ snapshot, diff, resolveName }: Props) {
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-3 text-xs">
                         <div>
+                          <div className="text-muted">Votos contabilizados</div>
+                          <div className="text-ink font-medium tabular-nums">{fmtInt(c.votos_actuales)}</div>
+                          <DiffSlot delta={d?.votos_actuales} format={(n) => fmtInt(Math.round(n))} />
+                        </div>
+                        <div className="text-right">
+                          <div className="text-muted">% Actual</div>
+                          <div className="text-ink font-medium tabular-nums">{pctActual(c).toFixed(2)}%</div>
+                          <DiffSlot delta={pctActualDelta(c)} format={(n) => `${n.toFixed(2)} pp`} align="right" />
+                        </div>
+                        <div>
                           <div className="text-muted">Votos proyectados</div>
                           <div className="text-ink font-medium tabular-nums">{fmtInt(c.proy_100)}</div>
                           <DiffSlot delta={d?.proy_100} format={(n) => fmtInt(Math.round(n))} />
                         </div>
                         <div className="text-right">
-                          <div className="text-muted">Margen</div>
+                          <div className="text-muted">Margen de error</div>
                           <div className="text-ink font-medium tabular-nums">±{fmtPP(c.margen_pp)}</div>
                           <DiffSlot delta={d?.margen_pp} format={(n) => `${n.toFixed(2)} pp`} align="right" />
                         </div>
@@ -97,9 +130,11 @@ export function FullTable({ snapshot, diff, resolveName }: Props) {
                   <thead className="text-ink border-b border-muted">
                     <tr>
                       <th className="text-left font-semibold px-2 py-3">Candidato</th>
-                      <th className="text-right font-semibold px-2 py-3">% Est.</th>
-                      <th className="text-right font-semibold px-2 py-3">Margen ± pp</th>
+                      <th className="text-right font-semibold px-2 py-3">Votos contabilizados</th>
+                      <th className="text-right font-semibold px-2 py-3">% Actual</th>
                       <th className="text-right font-semibold px-2 py-3">Votos proyectados</th>
+                      <th className="text-right font-semibold px-2 py-3">% Proyectado Final</th>
+                      <th className="text-right font-semibold px-2 py-3">Margen de error</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-muted">
@@ -114,6 +149,18 @@ export function FullTable({ snapshot, diff, resolveName }: Props) {
                             </div>
                           </td>
                           <td className="px-2 py-3 text-right">
+                            <div className="text-ink tabular-nums">{fmtInt(c.votos_actuales)}</div>
+                            <DiffSlot delta={d?.votos_actuales} format={(n) => fmtInt(Math.round(n))} align="right" />
+                          </td>
+                          <td className="px-2 py-3 text-right">
+                            <div className="text-ink tabular-nums">{pctActual(c).toFixed(2)}%</div>
+                            <DiffSlot delta={pctActualDelta(c)} format={(n) => `${n.toFixed(2)} pp`} align="right" />
+                          </td>
+                          <td className="px-2 py-3 text-right">
+                            <div className="text-ink tabular-nums">{fmtInt(c.proy_100)}</div>
+                            <DiffSlot delta={d?.proy_100} format={(n) => fmtInt(Math.round(n))} align="right" />
+                          </td>
+                          <td className="px-2 py-3 text-right">
                             <div className="text-ink tabular-nums font-medium">
                               {c.pct_est.toFixed(2)}%
                             </div>
@@ -122,10 +169,6 @@ export function FullTable({ snapshot, diff, resolveName }: Props) {
                           <td className="px-2 py-3 text-right">
                             <div className="text-ink tabular-nums">±{fmtPP(c.margen_pp)}</div>
                             <DiffSlot delta={d?.margen_pp} format={(n) => `${n.toFixed(2)} pp`} align="right" />
-                          </td>
-                          <td className="px-2 py-3 text-right">
-                            <div className="text-ink tabular-nums">{fmtInt(c.proy_100)}</div>
-                            <DiffSlot delta={d?.proy_100} format={(n) => fmtInt(Math.round(n))} align="right" />
                           </td>
                         </tr>
                       )

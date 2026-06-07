@@ -8,8 +8,9 @@ import {
 } from 'recharts'
 
 interface Props {
-  snapshot: Snapshot
-  resolveName: NameResolver
+  snapshot:        Snapshot
+  resolveName:     NameResolver
+  candidateColors: Record<string, string>
 }
 
 // Leemos los dos tonos del sistema directamente de las variables CSS (index.css)
@@ -39,7 +40,7 @@ function useIsMobile(breakpoint = 768): boolean {
   return isMobile
 }
 
-export function ProjectionChart({ snapshot, resolveName }: Props) {
+export function ProjectionChart({ snapshot, resolveName, candidateColors }: Props) {
   const isMobile = useIsMobile()
   const { a: colorA, b: colorB } = useThemeColors()
 
@@ -48,7 +49,7 @@ export function ProjectionChart({ snapshot, resolveName }: Props) {
     pct:      c.pct_est,
     margen:   c.margen_pp,
     proy_100: c.proy_100,
-    fill:     i % 2 === 0 ? colorA : colorB,
+    fill:     candidateColors[c.nombre] ?? (i % 2 === 0 ? colorA : colorB),
   }))
 
   return (

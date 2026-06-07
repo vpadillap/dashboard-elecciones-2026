@@ -8,11 +8,13 @@ export interface HeroComparisonConfig {
 }
 
 export interface DisplayConfig {
-  hero_comparison: HeroComparisonConfig
+  hero_comparison:   HeroComparisonConfig
+  candidate_colors:  Record<string, string>   // nombre ONPE exacto → color CSS
 }
 
 const DEFAULT_CONFIG: DisplayConfig = {
-  hero_comparison: { candidate_a_position: 1, candidate_b_position: 2 },
+  hero_comparison:  { candidate_a_position: 1, candidate_b_position: 2 },
+  candidate_colors: {},
 }
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
@@ -27,6 +29,7 @@ export async function fetchDisplayConfig(): Promise<DisplayConfig> {
         ...DEFAULT_CONFIG.hero_comparison,
         ...(data.hero_comparison ?? {}),
       },
+      candidate_colors: { ...(data.candidate_colors ?? {}) },
     }
   } catch {
     return DEFAULT_CONFIG
