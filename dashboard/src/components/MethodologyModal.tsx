@@ -76,6 +76,21 @@ export function MethodologyModal({ open, onClose }: Props) {
         </div>
 
         <div className="space-y-5 text-sm md:text-base text-ink leading-relaxed">
+          {/* ─── Aviso del update — visible al inicio para transparencia ─── */}
+          <section className="border-l-4 border-accent-neutral pl-3 py-2 bg-ink/5 rounded">
+            <h3 className="text-ink font-semibold mb-1">
+              Actualización metodológica — desde la 1:00 PM del 9 de junio 2026
+            </h3>
+            <p className="text-muted">
+              A partir de esa hora introducimos un cambio importante en cómo
+              proyectamos los distritos sin actas suficientes. Las secciones
+              siguientes describen el modelo tal como venía operando hasta ese
+              momento. Más abajo, en la sección <strong>"Detalles del nuevo
+              modelo (desde 1 PM)"</strong>, explicamos qué cambió y por qué.
+            </p>
+          </section>
+
+          {/* ─── Secciones originales — preservadas como referencia base ─── */}
           <section>
             <h3 className="text-ink font-semibold mb-1">De dónde salen los datos</h3>
             <p className="text-muted">
@@ -134,7 +149,7 @@ export function MethodologyModal({ open, onClose }: Props) {
           <section>
             <h3 className="text-ink font-semibold mb-1">¿Por qué se excluyen algunos distritos?</h3>
             <p className="text-muted">
-              Los distritos con menos del 10% de actas contabilizadas se dejan
+              Los distritos con menos del 7% de actas contabilizadas se dejan
               fuera del cálculo directo porque sus datos todavía son muy pocos
               y podrían distorsionar la proyección. No se pierden: su peso
               estimado se suma al margen de error, para que el resultado final
@@ -157,6 +172,133 @@ export function MethodologyModal({ open, onClose }: Props) {
               "tendencia" donde solo hay orden de procesamiento. Lo
               estadísticamente honesto es la captura actual con su margen.
             </p>
+          </section>
+
+          {/* ─── Detalles del nuevo modelo (update) ─── */}
+          <section className="border-t border-muted pt-5 mt-2">
+            <h3 className="text-ink font-semibold mb-1 text-lg">
+              Detalles del nuevo modelo (desde la 1:00 PM del 9 de junio)
+            </h3>
+            <p className="text-muted">
+              Las secciones anteriores describen el modelo que aplicamos durante
+              la primera vuelta y las primeras horas del conteo de la segunda.
+              Era un modelo de tipo "cascade frecuentista": para los distritos
+              sin datos suficientes, asumía que se parecerían a sus vecinos
+              contabilizados, escalando hasta el promedio nacional si la región
+              no tenía vecinos disponibles. En la primera vuelta funcionó bien
+              porque siempre había vecinos a quienes parecerse.
+            </p>
+            <p className="text-muted mt-2">
+              En la segunda vuelta nos encontramos con un problema que el
+              modelo previo no manejaba: <strong>el voto en el extranjero
+              llegó con retraso significativo</strong>, dejando continentes
+              enteros al 0% de actas durante horas. Sin vecinos a quienes
+              parecerse, el cascade terminaba asumiendo que la diáspora vota
+              como Perú promedio — lo cual es claramente incorrecto (Madrid no
+              vota como Cajamarca). El margen de error y la proyección se
+              volvían inestables.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-ink font-semibold mb-1">¿Qué cambió, concretamente?</h3>
+            <ul className="text-muted list-disc pl-6 mt-1 space-y-1.5">
+              <li>
+                <strong>Distritos sin datos</strong>: <em>antes</em> caían al
+                promedio nacional con un margen amplio. <em>Ahora</em> usan su
+                propio histórico de la primera vuelta con incertidumbre
+                acotada.
+              </li>
+              <li>
+                <strong>Margen de error</strong>: <em>antes</em> se calculaba
+                por bloques con pisos elegidos a criterio. <em>Ahora</em> sale
+                directamente del muestreo de 5,000 simulaciones (Monte Carlo).
+              </li>
+              <li>
+                <strong>Probabilidad de inversión del orden</strong>:{' '}
+                <em>antes</em> aproximación normal sobre varianzas sumadas.{' '}
+                <em>Ahora</em> conteo exacto: fracción de simulaciones en las
+                que el orden se invierte.
+              </li>
+              <li>
+                <strong>Umbrales internos</strong>: <em>antes</em> nueve
+                parámetros calibrados por intuición. <em>Ahora</em> dos
+                parámetros con justificación estadística directa.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="text-ink font-semibold mb-1">¿Cómo proyectamos zonas sin actas todavía?</h3>
+            <p className="text-muted">
+              Para cada distrito sin datos en la segunda vuelta (o con muy
+              pocos), calculamos qué candidato esperaríamos que gane ahí a
+              partir de dos insumos:
+            </p>
+            <ul className="text-muted list-disc pl-6 mt-2 space-y-1">
+              <li>
+                <strong>Cómo votó ese distrito en primera vuelta</strong> entre
+                los 27 candidatos originales.
+              </li>
+              <li>
+                <strong>Cómo se transfieren esos votos a la segunda vuelta</strong>:
+                qué porcentaje de los votantes de cada candidato de primera
+                vuelta declara que votará por Keiko o Roberto en segunda
+                vuelta.
+              </li>
+            </ul>
+            <p className="text-muted mt-2">
+              Por ejemplo: si en Madrid el bloque conservador (López Aliaga,
+              Keiko, Álvarez, etc.) sumó 70% en primera vuelta, y sabemos que
+              ese bloque transfiere ~60-90% de sus votos a Keiko en segunda
+              vuelta, entonces nuestro punto de partida para Madrid es ~60%
+              Keiko. Cuando lleguen actas reales de Madrid, esa estimación se
+              ajusta automáticamente: con pocas actas el histórico domina; con
+              muchas, la observación actual lo desplaza.
+            </p>
+            <p className="text-muted mt-2 text-xs italic">
+              La matriz de transferencia primera vuelta → segunda vuelta que
+              usamos proviene de la encuesta de intención de voto para la
+              segunda vuelta publicada por <strong>Perú21 / Ipsos en mayo
+              2026</strong>. Es la fuente pública que mejor cuantifica este
+              comportamiento. Como toda encuesta tiene error muestral, el
+              modelo incorpora una incertidumbre de ±3 pp en torno a esos
+              valores para no asumir certeza que no existe.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-ink font-semibold mb-1">
+              Las tres categorías que verás en el mapa
+            </h3>
+            <p className="text-muted">
+              En el mapa por regiones encontrarás tres categorías de distritos.
+              Con el modelo nuevo <strong>ninguna región queda sin
+              proyección</strong>: aún las que no tienen actas todavía muestran
+              candidato proyectado (borde e ícono) calculado desde el
+              histórico de la primera vuelta.
+            </p>
+            <ul className="text-muted list-disc pl-6 mt-2 space-y-1">
+              <li>
+                <strong>Distritos con actas suficientes (sobre el umbral)</strong>:
+                ≥7% de sus actas contabilizadas. Su proyección ya está dominada
+                por la observación real de la segunda vuelta.
+              </li>
+              <li>
+                <strong>Combinan actas parciales con el histórico de primera
+                vuelta</strong>: distritos con pocas actas, pero la región
+                tiene otros distritos con datos suficientes. La proyección
+                combina lo que ya se contó con el histórico transferido.
+              </li>
+              <li>
+                <strong>Proyectados completamente desde la primera vuelta</strong>:
+                regiones donde aún no hay actas de segunda vuelta (caso típico:
+                continentes enteros del extranjero al 0%). La proyección viene
+                del histórico de primera vuelta de cada distrito, transferido
+                con la matriz Ipsos. La incertidumbre en estos casos es la
+                mayor de las tres, pero hay proyección — no es un "no sé".
+              </li>
+            </ul>
           </section>
         </div>
       </div>

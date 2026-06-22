@@ -37,8 +37,36 @@ export interface KPIs {
 
 export interface Methodology {
   min_pct_proyeccion: number
-  sigma_min: number
   fuentes_varianza: string[]
+  // Campos del modelo bayesiano jerárquico (snapshot v2+).
+  modelo?: string
+  prior_discount_a0?: number
+  prior_strength_cap?: number
+  sigma_matriz_transfer?: number
+  mc_iterations?: number
+  // Campo legacy del cascade (presente solo en snapshots antiguos).
+  sigma_min?: number
+}
+
+export interface RegionCandidate {
+  nombre: string
+  votos_actuales: number
+  pct_actual: number
+  // Proyección del modelo bayesiano (% esperado al cierre del conteo).
+  // Para regiones sin actas todavía, viene del prior R1 + matriz Ipsos.
+  // Opcional: snapshots anteriores a 9-jun-2026 1PM no lo traen.
+  pct_proyectado?: number
+}
+
+export interface Region {
+  nombre: string                    // e.g. "LIMA", "ÁNCASH", "AMÉRICA"
+  ambito: 'PERU' | 'EXTRANJERO'
+  n_inc: number                     // distritos incluidos (>= MIN_PCT_PROYECCION)
+  n_exc: number                     // distritos bajo el umbral
+  pct_pond: number                  // cobertura ponderada por tamaño (0–100)
+  ganador: string | null            // candidato con más votos actuales en la región
+  ganador_proyectado?: string | null // candidato con mayor proyección en la región
+  candidatos: RegionCandidate[]
 }
 
 export interface Snapshot {
@@ -50,6 +78,9 @@ export interface Snapshot {
   candidatos: Candidate[]
   comparaciones: Comparison[]
   metodologia: Methodology
+  // Opcional: agregación por departamento/continente. Solo presente en
+  // snapshots generados con scraper >= v2; ausente en históricos.
+  regiones?: Region[]
 }
 
 export interface SnapshotIndexEntry {

@@ -11,6 +11,7 @@ import { HeroComparison } from './components/HeroComparison'
 import { KPIBar } from './components/KPIBar'
 import { ProjectionChart } from './components/ProjectionChart'
 import { FullTable } from './components/FullTable'
+import { PeruHeatMap } from './components/PeruHeatMap'
 import { MethodologyModal } from './components/MethodologyModal'
 import { CreditsFooter } from './components/CreditsFooter'
 
@@ -154,9 +155,8 @@ export default function App() {
             <HeroComparison snapshot={state.current} previous={state.previous} diff={diff} resolveName={state.resolveName} config={state.config.hero_comparison} />
             <KPIBar snapshot={state.current} diff={diff} />
             <ProjectionChart snapshot={state.current} resolveName={state.resolveName} candidateColors={state.config.candidate_colors} />
-            {state.current.candidatos.length > 2 && (
-              <FullTable snapshot={state.current} previous={state.previous} diff={diff} resolveName={state.resolveName} />
-            )}
+            <FullTable snapshot={state.current} previous={state.previous} diff={diff} resolveName={state.resolveName} />
+            <PeruHeatMap snapshot={state.current} resolveName={state.resolveName} candidateColors={state.config.candidate_colors} candidateIcons={state.config.candidate_icons} />
           </main>
         </>
       )}

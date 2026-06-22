@@ -1,0 +1,686 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-08T11:16:46-05:00",
+  "id_eleccion": "10",
+  "ronda": 2,
+  "kpis": {
+    "peru_inc": 1822,
+    "peru_exc": 70,
+    "ext_inc": 0,
+    "ext_exc": 210,
+    "votos_actuales": 17537639,
+    "proy_total": 18893479,
+    "pct_pond_inc": 97.95,
+    "pct_pond_global": 92.85,
+    "actas_jee": 1514,
+    "votos_jee_est": 319039,
+    "electores_habiles": 27325432,
+    "actas_contabilizadas_onpe": 93.574
+  },
+  "candidatos": [
+    {
+      "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "partido": "JUNTOS POR EL PERÚ",
+      "votos_actuales": 8765276,
+      "proy_100": 9575500,
+      "pct_est": 50.68,
+      "margen_pp": 1.0
+    },
+    {
+      "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "partido": "FUERZA POPULAR",
+      "votos_actuales": 8772363,
+      "proy_100": 9317979,
+      "pct_est": 49.32,
+      "margen_pp": 1.0
+    }
+  ],
+  "comparaciones": [
+    {
+      "a": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "b": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "diff_pp": 1.36,
+      "p_orden_final": 0.9696
+    }
+  ],
+  "metodologia": {
+    "min_pct_proyeccion": 7.0,
+    "sigma_min": 0.02,
+    "fuentes_varianza": [
+      "excluidas",
+      "fraccion_restante_incluidas"
+    ]
+  },
+  "regiones": [
+    {
+      "nombre": "AMÉRICA",
+      "ambito": "EXTRANJERO",
+      "n_inc": 0,
+      "n_exc": 95,
+      "pct_pond": 0.0,
+      "ganador": null,
+      "ganador_proyectado": null,
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "ASIA",
+      "ambito": "EXTRANJERO",
+      "n_inc": 0,
+      "n_exc": 35,
+      "pct_pond": 0.0,
+      "ganador": null,
+      "ganador_proyectado": null,
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "EUROPA",
+      "ambito": "EXTRANJERO",
+      "n_inc": 0,
+      "n_exc": 67,
+      "pct_pond": 0.0,
+      "ganador": null,
+      "ganador_proyectado": null,
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "OCEANÍA",
+      "ambito": "EXTRANJERO",
+      "n_inc": 0,
+      "n_exc": 7,
+      "pct_pond": 0.0,
+      "ganador": null,
+      "ganador_proyectado": null,
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "ÁFRICA",
+      "ambito": "EXTRANJERO",
+      "n_inc": 0,
+      "n_exc": 6,
+      "pct_pond": 0.0,
+      "ganador": null,
+      "ganador_proyectado": null,
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 0,
+          "pct_actual": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "AMAZONAS",
+      "ambito": "PERU",
+      "n_inc": 82,
+      "n_exc": 2,
+      "pct_pond": 97.46,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 67781,
+          "pct_actual": 37.38
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 113538,
+          "pct_actual": 62.62
+        }
+      ]
+    },
+    {
+      "nombre": "APURÍMAC",
+      "ambito": "PERU",
+      "n_inc": 85,
+      "n_exc": 0,
+      "pct_pond": 99.04,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 43080,
+          "pct_actual": 18.84
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 185573,
+          "pct_actual": 81.16
+        }
+      ]
+    },
+    {
+      "nombre": "AREQUIPA",
+      "ambito": "PERU",
+      "n_inc": 109,
+      "n_exc": 0,
+      "pct_pond": 99.34,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 332235,
+          "pct_actual": 36.43
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 579783,
+          "pct_actual": 63.57
+        }
+      ]
+    },
+    {
+      "nombre": "AYACUCHO",
+      "ambito": "PERU",
+      "n_inc": 112,
+      "n_exc": 12,
+      "pct_pond": 97.54,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 60886,
+          "pct_actual": 20.95
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 229692,
+          "pct_actual": 79.05
+        }
+      ]
+    },
+    {
+      "nombre": "CAJAMARCA",
+      "ambito": "PERU",
+      "n_inc": 127,
+      "n_exc": 0,
+      "pct_pond": 99.31,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 244352,
+          "pct_actual": 33.24
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 490702,
+          "pct_actual": 66.76
+        }
+      ]
+    },
+    {
+      "nombre": "CALLAO",
+      "ambito": "PERU",
+      "n_inc": 7,
+      "n_exc": 0,
+      "pct_pond": 97.62,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 394407,
+          "pct_actual": 65.61
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 206765,
+          "pct_actual": 34.39
+        }
+      ]
+    },
+    {
+      "nombre": "CUSCO",
+      "ambito": "PERU",
+      "n_inc": 105,
+      "n_exc": 11,
+      "pct_pond": 98.33,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 156654,
+          "pct_actual": 22.18
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 549738,
+          "pct_actual": 77.82
+        }
+      ]
+    },
+    {
+      "nombre": "HUANCAVELICA",
+      "ambito": "PERU",
+      "n_inc": 101,
+      "n_exc": 1,
+      "pct_pond": 98.21,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 36191,
+          "pct_actual": 18.6
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 158425,
+          "pct_actual": 81.4
+        }
+      ]
+    },
+    {
+      "nombre": "HUÁNUCO",
+      "ambito": "PERU",
+      "n_inc": 84,
+      "n_exc": 0,
+      "pct_pond": 96.85,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 136899,
+          "pct_actual": 35.92
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 244244,
+          "pct_actual": 64.08
+        }
+      ]
+    },
+    {
+      "nombre": "ICA",
+      "ambito": "PERU",
+      "n_inc": 43,
+      "n_exc": 0,
+      "pct_pond": 99.09,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 279728,
+          "pct_actual": 51.91
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 259131,
+          "pct_actual": 48.09
+        }
+      ]
+    },
+    {
+      "nombre": "JUNÍN",
+      "ambito": "PERU",
+      "n_inc": 123,
+      "n_exc": 1,
+      "pct_pond": 98.42,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 317670,
+          "pct_actual": 45.08
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 386933,
+          "pct_actual": 54.92
+        }
+      ]
+    },
+    {
+      "nombre": "LA LIBERTAD",
+      "ambito": "PERU",
+      "n_inc": 84,
+      "n_exc": 0,
+      "pct_pond": 99.28,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 599711,
+          "pct_actual": 57.53
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 442641,
+          "pct_actual": 42.47
+        }
+      ]
+    },
+    {
+      "nombre": "LAMBAYEQUE",
+      "ambito": "PERU",
+      "n_inc": 38,
+      "n_exc": 0,
+      "pct_pond": 99.59,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 435552,
+          "pct_actual": 58.85
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 304561,
+          "pct_actual": 41.15
+        }
+      ]
+    },
+    {
+      "nombre": "LIMA",
+      "ambito": "PERU",
+      "n_inc": 171,
+      "n_exc": 0,
+      "pct_pond": 96.83,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 3943082,
+          "pct_actual": 63.5
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 2266534,
+          "pct_actual": 36.5
+        }
+      ]
+    },
+    {
+      "nombre": "LORETO",
+      "ambito": "PERU",
+      "n_inc": 18,
+      "n_exc": 36,
+      "pct_pond": 94.61,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 168543,
+          "pct_actual": 55.18
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 136904,
+          "pct_actual": 44.82
+        }
+      ]
+    },
+    {
+      "nombre": "MADRE DE DIOS",
+      "ambito": "PERU",
+      "n_inc": 9,
+      "n_exc": 2,
+      "pct_pond": 95.41,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 28257,
+          "pct_actual": 31.6
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 61177,
+          "pct_actual": 68.4
+        }
+      ]
+    },
+    {
+      "nombre": "MOQUEGUA",
+      "ambito": "PERU",
+      "n_inc": 21,
+      "n_exc": 0,
+      "pct_pond": 99.64,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 33353,
+          "pct_actual": 27.43
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 88235,
+          "pct_actual": 72.57
+        }
+      ]
+    },
+    {
+      "nombre": "PASCO",
+      "ambito": "PERU",
+      "n_inc": 29,
+      "n_exc": 0,
+      "pct_pond": 98.19,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 50699,
+          "pct_actual": 39.24
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 78518,
+          "pct_actual": 60.76
+        }
+      ]
+    },
+    {
+      "nombre": "PIURA",
+      "ambito": "PERU",
+      "n_inc": 65,
+      "n_exc": 0,
+      "pct_pond": 98.67,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 581730,
+          "pct_actual": 56.95
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 439700,
+          "pct_actual": 43.05
+        }
+      ]
+    },
+    {
+      "nombre": "PUNO",
+      "ambito": "PERU",
+      "n_inc": 110,
+      "n_exc": 0,
+      "pct_pond": 99.0,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 95272,
+          "pct_actual": 13.56
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 607328,
+          "pct_actual": 86.44
+        }
+      ]
+    },
+    {
+      "nombre": "SAN MARTÍN",
+      "ambito": "PERU",
+      "n_inc": 77,
+      "n_exc": 1,
+      "pct_pond": 99.17,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 217130,
+          "pct_actual": 45.43
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 260806,
+          "pct_actual": 54.57
+        }
+      ]
+    },
+    {
+      "nombre": "TACNA",
+      "ambito": "PERU",
+      "n_inc": 28,
+      "n_exc": 0,
+      "pct_pond": 98.62,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 65388,
+          "pct_actual": 28.65
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 162820,
+          "pct_actual": 71.35
+        }
+      ]
+    },
+    {
+      "nombre": "TUMBES",
+      "ambito": "PERU",
+      "n_inc": 13,
+      "n_exc": 0,
+      "pct_pond": 99.69,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 81960,
+          "pct_actual": 64.34
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 45427,
+          "pct_actual": 35.66
+        }
+      ]
+    },
+    {
+      "nombre": "UCAYALI",
+      "ambito": "PERU",
+      "n_inc": 15,
+      "n_exc": 4,
+      "pct_pond": 95.89,
+      "ganador": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "ganador_proyectado": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 134405,
+          "pct_actual": 53.36
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 117474,
+          "pct_actual": 46.64
+        }
+      ]
+    },
+    {
+      "nombre": "ÁNCASH",
+      "ambito": "PERU",
+      "n_inc": 166,
+      "n_exc": 0,
+      "pct_pond": 98.66,
+      "ganador": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "ganador_proyectado": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "candidatos": [
+        {
+          "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+          "votos_actuales": 267408,
+          "pct_actual": 43.4
+        },
+        {
+          "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+          "votos_actuales": 348735,
+          "pct_actual": 56.6
+        }
+      ]
+    }
+  ]
+}

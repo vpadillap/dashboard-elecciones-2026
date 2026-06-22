@@ -10,11 +10,15 @@ export interface HeroComparisonConfig {
 export interface DisplayConfig {
   hero_comparison:   HeroComparisonConfig
   candidate_colors:  Record<string, string>   // nombre ONPE exacto → color CSS
+  candidate_photos:  Record<string, string>   // nombre ONPE exacto → URL imagen
+  candidate_icons:   Record<string, string>   // nombre ONPE exacto → URL ícono partido (mapa)
 }
 
 const DEFAULT_CONFIG: DisplayConfig = {
   hero_comparison:  { candidate_a_position: 1, candidate_b_position: 2 },
   candidate_colors: {},
+  candidate_photos: {},
+  candidate_icons:  {},
 }
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
@@ -30,6 +34,8 @@ export async function fetchDisplayConfig(): Promise<DisplayConfig> {
         ...(data.hero_comparison ?? {}),
       },
       candidate_colors: { ...(data.candidate_colors ?? {}) },
+      candidate_photos: { ...(data.candidate_photos ?? {}) },
+      candidate_icons:  { ...(data.candidate_icons  ?? {}) },
     }
   } catch {
     return DEFAULT_CONFIG

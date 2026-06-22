@@ -31,7 +31,7 @@ function DiffSlot({
 }
 
 export function FullTable({ snapshot, previous, diff, resolveName }: Props) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const rows = snapshot.candidatos
   const totalContabilizados = snapshot.kpis.votos_actuales
   const pctActual = (c: Snapshot['candidatos'][number]) =>

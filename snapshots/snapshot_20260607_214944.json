@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-07T21:49:44-05:00",
+  "id_eleccion": "10",
+  "ronda": 2,
+  "kpis": {
+    "peru_inc": 679,
+    "peru_exc": 1213,
+    "ext_inc": 0,
+    "ext_exc": 210,
+    "votos_actuales": 10179266,
+    "proy_total": 14786153,
+    "pct_pond_inc": 69.15,
+    "pct_pond_global": 52.68,
+    "actas_jee": 815,
+    "votos_jee_est": 175737,
+    "electores_habiles": 27325432
+  },
+  "candidatos": [
+    {
+      "nombre": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "partido": "FUERZA POPULAR",
+      "votos_actuales": 5357951,
+      "proy_100": 7938784,
+      "pct_est": 50.33,
+      "margen_pp": 1.46
+    },
+    {
+      "nombre": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "partido": "JUNTOS POR EL PERÚ",
+      "votos_actuales": 4821315,
+      "proy_100": 6847369,
+      "pct_est": 49.67,
+      "margen_pp": 1.46
+    }
+  ],
+  "comparaciones": [
+    {
+      "a": "KEIKO SOFIA FUJIMORI HIGUCHI",
+      "b": "ROBERTO HELBERT SANCHEZ PALOMINO",
+      "diff_pp": 0.66,
+      "p_orden_final": 0.7348
+    }
+  ],
+  "metodologia": {
+    "min_pct_proyeccion": 5.0,
+    "sigma_min": 0.02,
+    "fuentes_varianza": [
+      "excluidas",
+      "fraccion_restante_incluidas"
+    ]
+  }
+}

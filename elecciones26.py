@@ -4,6 +4,7 @@ import json
 import math
 import os
 import httpx
+import numpy as np
 import pandas as pd
 import sys
 from tabulate import tabulate
@@ -20,28 +21,47 @@ if sys.stdout.encoding != 'utf-8':
 # Endpoint PHP que recibe los snapshots. El token debe coincidir con el
 # hardcodeado en `upload.php`. Deja UPLOAD_URL vacío para omitir la subida
 # (útil al correr local sin desplegar).
-UPLOAD_URL   = "https://padillaprado.me/elecciones2026/snapshots/upload.php"
+UPLOAD_URL   = "https://padillaprado.me/segundavuelta2026/snapshots/upload.php"
 UPLOAD_TOKEN = "FUJIMORINUNCAMAS"
 
 # Constantes
-BASE_URL = "https://resultadoelectoral.onpe.gob.pe/presentacion-backend"
+BASE_URL = "https://resultadosegundavuelta.onpe.gob.pe/presentacion-backend"
 ID_ELECCION = "10"
 
 # Headers avanzados para mimetizar un navegador Chrome real y evitar bloqueos WAF (CloudFront)
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-    "Origin": "https://resultadoelectoral.onpe.gob.pe",
-    "Referer": "https://resultadoelectoral.onpe.gob.pe/main/presidenciales",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Accept-Language": "es-US,es-419;q=0.9,es;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Content-Type": "application/json",
+    "Referer": "https://resultadosegundavuelta.onpe.gob.pe/main/presidenciales",
+    "Sec-Ch-Ua": '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
     "Priority": "u=1, i",
-    "X-Requested-With": "XMLHttpRequest"
 }
 
-MAX_CONCURRENT_REQUESTS = 15 # Reducido ligeramente para evitar disparar el WAF
+# Concurrencia: el WAF castiga el patrón "muchos requests durante mucho tiempo
+# desde la misma IP" más que el pico de RPS. Subimos para llegar más lejos
+# antes del primer bloqueo (~50%) y terminar en ~2 tandas en vez de muchas;
+# el resume+cooldown se encarga de absorber el corte.
+MAX_CONCURRENT_REQUESTS = 26
+REQUEST_JITTER_MAX = 0.05
+
+# Ventana de detección de bloqueo: si los últimos N requests devolvieron HTML
+# del WAF, asumimos bloqueo y dormimos antes de seguir golpeando la IP.
+WAF_BLOCK_WINDOW = 20
+WAF_BLOCK_THRESHOLD = 15        # ≥15 de los últimos 20 → bloqueado
+WAF_BLOCK_COOLDOWN_SEC = 65     # pausa al detectar bloqueo
+
+# Resume: archivo donde persistimos los unit_key ya procesados con éxito.
+# Si el WAF nos corta a mitad de recorrido, la siguiente corrida salta lo hecho.
+PROGRESS_FILE = "progress_units.json"
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
 # Archivos de caché — independientes para poder reutilizarlos entre rondas:
@@ -66,21 +86,119 @@ SCHEMA_VERSION = 1
 # Ronda electoral: 1 = primera vuelta, 2 = segunda. Cambiar manualmente al
 # iniciar la segunda vuelta. Se embebe en cada snapshot para que el dashboard
 # distinga rondas sin adivinar por fecha.
-RONDA = 1
+RONDA = 2
 
 # Umbral mínimo de actas contabilizadas para incluir una unidad en la proyección.
-MIN_PCT_PROYECCION = 10.0
+MIN_PCT_PROYECCION = 7.0
 
-# Sigma mínima garantizada por candidato en cada bloque de varianza.
-# Evita márgenes cero cuando la varianza intra-provincial es muy baja.
-# 0.02 = 2 pp: reconoce que distritos excluidos (más rurales/remotos) pueden
-# comportarse diferente a los incluidos aunque internamente sean similares.
-SIGMA_MIN = 0.02
-# Piso de sigma específico para la COLA (fracción restante de distritos ya
-# incluidos). Cuando un distrito ya tiene 95–99% contado, la incertidumbre
-# relevante es acta-a-acta dentro del distrito, no distrito-a-distrito; por eso
-# el piso es mucho más bajo que SIGMA_MIN. 0.005 = 0.5 pp.
-SIGMA_MIN_TAIL = 0.005
+# ── Prior R1 → R2 ────────────────────────────────────────────────────────────
+# Cache de resultados de primera vuelta por distrito (generado por scrape_r1.py).
+# Si existe, lo usamos como prior bayesiano: para distritos sin datos R2 o por
+# debajo del umbral, su comportamiento esperado en R2 se infiere a partir de
+# cómo votó en R1 (en vez de caer al promedio nacional peruano).
+R1_CACHE_FILE = "cache_resultados_r1.json"
+
+# Matriz de transferencia R1 → R2 desde encuesta. P(R2=X | voto R1=grupo).
+TRANSFER_R1_TO_R2 = {
+    "KEIKO":         {"K": 0.94, "R": 0.04},
+    "LOPEZ_ALIAGA":  {"K": 0.64, "R": 0.14},
+    "ALVAREZ":       {"K": 0.48, "R": 0.29},
+    "NIETO":         {"K": 0.33, "R": 0.32},
+    "BELMONT":       {"K": 0.11, "R": 0.61},
+    "LOPEZ_CHAU":    {"K": 0.09, "R": 0.66},
+    "ROBERTO":       {"K": 0.02, "R": 0.95},
+    "OTROS":         {"K": 0.30, "R": 0.32},
+    "BLANCO_NULO":   {"K": 0.17, "R": 0.17},
+}
+
+# Substrings (uppercase) que identifican el grupo de la matriz a partir del
+# `nombreCandidato` de R1. El resto cae a "OTROS".
+R1_CANDIDATE_GROUPS = [
+    ("LOPEZ ALIAGA",        "LOPEZ_ALIAGA"),
+    ("LÓPEZ ALIAGA",        "LOPEZ_ALIAGA"),
+    ("KEIKO",               "KEIKO"),
+    ("CARLOS GONSALO ALVAREZ", "ALVAREZ"),
+    ("ALVAREZ LOAYZA",      "ALVAREZ"),
+    ("JORGE NIETO",         "NIETO"),
+    ("BELMONT",             "BELMONT"),
+    ("LOPEZ CHAU",          "LOPEZ_CHAU"),
+    ("LÓPEZ CHAU",          "LOPEZ_CHAU"),
+    ("ROBERTO HELBERT SANCHEZ", "ROBERTO"),
+    ("SANCHEZ PALOMINO",    "ROBERTO"),
+]
+
+# Ajuste central del turnout R2 respecto a R1 (opción B). 1.0 = sin ajuste.
+# La incertidumbre adicional se modela vía sigma del bloque, no aquí.
+TURNOUT_R2_OVER_R1 = 1.0
+
+# ── Modelo Bayesiano Jerárquico (Power Priors + Monte Carlo) ─────────────────
+# Reemplaza el cascade frecuentista + parches por un modelo estadísticamente
+# limpio: Beta-Binomial por distrito con prior R1 descontado (power priors),
+# random effects jerárquicos (nacional/regional) para correlación, y Monte
+# Carlo para todos los outputs (proyección, margen, p_invert).
+PRIOR_DISCOUNT_A0     = 0.5    # a₀: fracción de R1 que se trata como evidencia
+PRIOR_STRENGTH_CAP    = 300    # cap derivado del error de la matriz (~3pp → n≈278)
+SIGMA_MATRIX_TRANSFER = 0.03   # 3pp: error muestral de la encuesta de transferencia
+MC_ITERATIONS         = 5000   # Sampleos de Monte Carlo
+
+
+def _match_r1_grupo(nombre_candidato: str) -> str:
+    """Devuelve el grupo de la matriz de transferencia para un candidato R1."""
+    n = (nombre_candidato or "").upper()
+    for needle, grupo in R1_CANDIDATE_GROUPS:
+        if needle in n:
+            return grupo
+    return "OTROS"
+
+
+def _load_r1_priors() -> dict:
+    """Carga el cache de R1 y construye un dict por distrito con:
+        votos_K_esperados, votos_R_esperados, prior_share_K, turnout_R1.
+    Devuelve {} si el cache no existe — el modelo entonces sigue como antes.
+    """
+    if not os.path.exists(R1_CACHE_FILE):
+        return {}
+    try:
+        with open(R1_CACHE_FILE, encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return {}
+
+    priors = {}
+    for key, d in (payload.get("distritos") or {}).items():
+        # Indexamos por (ambito, region_cont, prov_pais, dist_ciudad) que son
+        # las mismas claves que usa `meta` en analyze_and_report.
+        amb  = d.get("ambito")
+        reg  = d.get("region_cont")
+        prov = d.get("prov_pais")
+        dist = d.get("dist_ciudad")
+        if not (amb and reg and prov and dist):
+            continue
+
+        K_total, R_total = 0.0, 0.0
+        for nombre_r1, info in (d.get("candidatos") or {}).items():
+            votos = float(info.get("votos") or 0)
+            if votos <= 0:
+                continue
+            grupo = _match_r1_grupo(nombre_r1)
+            probs = TRANSFER_R1_TO_R2[grupo]
+            K_total += votos * probs["K"]
+            R_total += votos * probs["R"]
+        bn = float(d.get("votos_blancos") or 0) + float(d.get("votos_nulos") or 0)
+        if bn > 0:
+            probs_bn = TRANSFER_R1_TO_R2["BLANCO_NULO"]
+            K_total += bn * probs_bn["K"]
+            R_total += bn * probs_bn["R"]
+
+        prior_K = (K_total / (K_total + R_total)) if (K_total + R_total) > 0 else None
+
+        priors[(amb, reg, prov, dist)] = {
+            "votos_K_esperados": K_total,
+            "votos_R_esperados": R_total,
+            "prior_share_K":     prior_K,
+            "total_emitidos_R1": float(d.get("total_emitidos") or 0),
+        }
+    return priors
 
 
 class ONPEScraper:
@@ -88,6 +206,18 @@ class ONPEScraper:
         self.all_data = []
         self.failed_units = []
         self.seen_units = set()
+        # Ventana deslizante de últimos resultados (True = HTML/bloqueo).
+        # Si superamos WAF_BLOCK_THRESHOLD dentro de WAF_BLOCK_WINDOW, pausamos.
+        from collections import deque
+        self._block_window = deque(maxlen=WAF_BLOCK_WINDOW)
+        self._cooldown_lock = asyncio.Lock()
+        # Set de unit_keys ya procesadas con éxito en corridas anteriores
+        # (se persiste a PROGRESS_FILE). En la siguiente corrida se omiten.
+        self.completed_units = set()
+        # Muestras del Monte Carlo bayesiano (poblado en analyze_and_report).
+        # Se usan para `_prob_orden_final` exacto en vez de aprox. normal.
+        self._mc_samples_K = None
+        self._mc_samples_R = None
         # {(scope_id, dep_ubigeo, prov_ubigeo, dist_ubigeo): electores_habiles}
         # Poblado desde caché en disco o desde la API en la primera ejecución.
         self.padron_cache = {}
@@ -215,7 +345,14 @@ class ONPEScraper:
         res = await self.fetch_json(url)
         habiles = 0
         if res and isinstance(res, dict) and res.get("success"):
-            habiles = int(res["data"].get("totalElectoresHabiles", 0))
+            raw = (res.get("data") or {}).get("totalElectoresHabiles")
+            # La API a veces devuelve None (no 0 ni ausente). Guardamos 0 — la
+            # siguiente corrida intentará repoblar este distrito.
+            if raw is not None:
+                try:
+                    habiles = int(raw)
+                except (TypeError, ValueError):
+                    habiles = 0
         self.padron_cache[(scope_id, dep_ubigeo, prov_ubigeo, dist_ubigeo)] = habiles
 
     async def fetch_totales_nacional(self):
@@ -235,28 +372,108 @@ class ONPEScraper:
                 return None
         return None
 
+    async def _maybe_cooldown(self):
+        """Si la ventana indica bloqueo, pausa una sola vez (lock evita
+        múltiples coroutinas durmiéndose en cascada)."""
+        if len(self._block_window) < WAF_BLOCK_WINDOW:
+            return
+        if sum(self._block_window) < WAF_BLOCK_THRESHOLD:
+            return
+        if self._cooldown_lock.locked():
+            # Otra coroutina ya está manejando el cooldown — esperar a que termine.
+            async with self._cooldown_lock:
+                return
+        async with self._cooldown_lock:
+            # Re-chequear bajo el lock; pudo haberse despejado mientras esperábamos.
+            if sum(self._block_window) >= WAF_BLOCK_THRESHOLD:
+                print(f"\n[!] WAF parece estar bloqueando ({sum(self._block_window)}/{WAF_BLOCK_WINDOW} HTML en ventana). "
+                      f"Pausando {WAF_BLOCK_COOLDOWN_SEC}s antes de continuar...")
+                await asyncio.sleep(WAF_BLOCK_COOLDOWN_SEC)
+                self._block_window.clear()
+
     async def fetch_json(self, url):
+        import random
         async with semaphore:
-            for attempt in range(3):
+            await self._maybe_cooldown()
+            # Jitter inicial para des-sincronizar las requests bajo el semáforo.
+            if REQUEST_JITTER_MAX > 0:
+                await asyncio.sleep(random.uniform(0, REQUEST_JITTER_MAX))
+            for attempt in range(4):
                 try:
                     response = await self.client.get(url)
                     response.raise_for_status()
-                    
+
                     # Detectar si el servidor devolvió HTML (redirigido por WAF) en lugar de JSON
                     content_type = response.headers.get('Content-Type', '').lower()
                     if 'html' in content_type or response.text.strip().startswith('<!doctype'):
-                        if attempt < 2:
-                            await asyncio.sleep(2 * (attempt + 1))
+                        self._block_window.append(1)
+                        if attempt < 3:
+                            await asyncio.sleep(3 * (attempt + 1) + random.uniform(0, 1.5))
                             continue
                         return None
-                        
+
+                    self._block_window.append(0)
                     return response.json()
                 except Exception:
-                    if attempt < 2:
-                        await asyncio.sleep(2 * (attempt + 1))
+                    if attempt < 3:
+                        await asyncio.sleep(2 * (attempt + 1) + random.uniform(0, 1.0))
                     else:
                         return None
             return None
+
+    async def warmup(self):
+        """Antes de la batería de XHR, simulamos la navegación: pedir la página
+        principal y un par de endpoints "ambient" para asentar cookies CloudFront
+        (_ga, etc) y construir reputación de sesión legítima.
+
+        Además aprovechamos para capturar el `actasContabilizadas` oficial de
+        ONPE aquí — al inicio, cuando no hay riesgo de bloqueo — y guardarlo
+        como respaldo por si la captura al final de la corrida falla.
+        """
+        try:
+            await self.client.get("https://resultadosegundavuelta.onpe.gob.pe/main/presidenciales")
+            await asyncio.sleep(0.3)
+        except Exception:
+            pass
+        # Captura temprana de actasContabilizadas — no atraviesa el semáforo
+        # porque queremos asegurarla antes de cualquier presión sobre el WAF.
+        try:
+            r = await self.client.get(
+                f"{BASE_URL}/resumen-general/totales?idEleccion={ID_ELECCION}&tipoFiltro=eleccion"
+            )
+            if 'json' in r.headers.get('Content-Type','').lower():
+                data = r.json()
+                if data.get("success"):
+                    self.actas_onpe_nacional = float(data["data"].get("actasContabilizadas", 0))
+        except Exception:
+            pass
+
+    # ── Resume — progreso entre corridas (PROGRESS_FILE) ─────────────────────
+
+    def _load_progress(self):
+        if not os.path.exists(PROGRESS_FILE):
+            return
+        try:
+            with open(PROGRESS_FILE, encoding='utf-8') as f:
+                data = json.load(f)
+            self.completed_units = {tuple(k) for k in data.get("completed", [])}
+            print(f"[R] Resume: {len(self.completed_units):,} unidades completadas en corridas previas.")
+        except Exception:
+            self.completed_units = set()
+
+    def _save_progress(self):
+        try:
+            with open(PROGRESS_FILE, "w", encoding='utf-8') as f:
+                json.dump({"completed": [list(k) for k in self.completed_units]}, f)
+        except Exception:
+            pass
+
+    def _clear_progress(self):
+        try:
+            if os.path.exists(PROGRESS_FILE):
+                os.remove(PROGRESS_FILE)
+        except Exception:
+            pass
 
     async def get_departments(self, scope_id):
         url = f"{BASE_URL}/ubigeos/departamentos?idEleccion={ID_ELECCION}&idAmbitoGeografico={scope_id}"
@@ -309,7 +526,12 @@ class ONPEScraper:
             )
             electores_habiles = 0
             if padron_json and isinstance(padron_json, dict) and padron_json.get("success"):
-                electores_habiles = int(padron_json["data"].get("totalElectoresHabiles", 0))
+                raw_eh = (padron_json.get("data") or {}).get("totalElectoresHabiles")
+                if raw_eh is not None:
+                    try:
+                        electores_habiles = int(raw_eh)
+                    except (TypeError, ValueError):
+                        electores_habiles = 0
 
         if not votos_json or not totales_json or not isinstance(votos_json, dict) or not isinstance(totales_json, dict):
             return False
@@ -353,9 +575,58 @@ class ONPEScraper:
                 })
 
         self.seen_units.add(unit_key)
+        self.completed_units.add(unit_key)
+        # Persistir progreso cada cierto número de unidades para no perder
+        # más de un puñado si nos bloquean abruptamente.
+        if len(self.completed_units) % 50 == 0:
+            self._save_progress()
         return True
 
-    async def run(self):
+    def _latest_snapshot_onpe_pct(self) -> float | None:
+        """Devuelve el `actas_contabilizadas_onpe` del último snapshot en disco,
+        o None si no hay snapshots o no se puede leer."""
+        try:
+            if not os.path.isdir(SNAPSHOTS_DIR):
+                return None
+            files = [f for f in os.listdir(SNAPSHOTS_DIR)
+                     if f.startswith("snapshot_") and f.endswith(".json")]
+            if not files:
+                return None
+            latest = sorted(files)[-1]
+            with open(os.path.join(SNAPSHOTS_DIR, latest), encoding="utf-8") as f:
+                snap = json.load(f)
+            v = snap.get("kpis", {}).get("actas_contabilizadas_onpe")
+            return float(v) if v is not None else None
+        except Exception:
+            return None
+
+    async def run(self) -> bool:
+        """Devuelve True si la corrida completó sin distritos fallidos, False si
+        no. Cuando falla, NO debe generarse snapshot — los datos parciales en
+        memoria no representan el estado real de la elección."""
+        # ── 0. Limpieza de progreso previo + warmup ──────────────────────────────
+        # Cada corrida arranca de cero. NO usamos resume: el resume entre
+        # corridas dejaba `all_data` desincronizado con el progreso (las
+        # unidades "ya completadas" en el archivo no tenían su data cargada en
+        # memoria → snapshot truncado). Si una corrida falla, la próxima
+        # arranca limpia y vuelve a intentar todo.
+        self._clear_progress()
+        print("Warmup: asentando cookies de sesión...")
+        await self.warmup()
+
+        # ── 0.5. Check de cambios: si el % de actas contabilizadas ONPE no
+        # subió desde el último snapshot, no hay data nueva que procesar.
+        # Abortamos antes de scrapear ~2,100 distritos para ahorrar tiempo y
+        # WAF budget. No se genera snapshot (sería duplicado del anterior).
+        latest_pct = self._latest_snapshot_onpe_pct()
+        current_pct = self.actas_onpe_nacional
+        if (latest_pct is not None and current_pct is not None
+                and abs(current_pct - latest_pct) < 1e-6):
+            print(f"\n[=] Sin cambios: ONPE reporta {current_pct:.3f}% actas "
+                  f"(idéntico al último snapshot). Se omite el procesamiento.")
+            await self.client.aclose()
+            sys.exit(0)
+
         # ── 1. Jerarquía geográfica ───────────────────────────────────────────────
         extraction_tasks = self._load_jerarquia()
 
@@ -420,7 +691,16 @@ class ONPEScraper:
         else:
             print(f"    Padrón completo para todas las unidades.")
 
-        print(f"\nTotal de unidades a extraer: {len(extraction_tasks):,}")
+        # Filtrar las unidades ya completadas en corridas previas (resume).
+        pending = [
+            t for t in extraction_tasks
+            if (t["scope_id"], t["dep_ubigeo"], t["prov_ubigeo"], t["dist_ubigeo"])
+            not in self.completed_units
+        ]
+        skipped = len(extraction_tasks) - len(pending)
+        if skipped:
+            print(f"[R] Saltando {skipped:,} unidades ya completadas. Pendientes: {len(pending):,}")
+        print(f"\nTotal de unidades a extraer: {len(pending):,}")
 
         async def worker(task):
             success = await self.process_unit(
@@ -433,7 +713,7 @@ class ONPEScraper:
                 self.failed_units.append(task)
 
         print("\nLote principal de extracción (Nivel 3: Distrito/Ciudad):")
-        await tqdm.gather(*(worker(t) for t in extraction_tasks), desc="Extrayendo unidades")
+        await tqdm.gather(*(worker(t) for t in pending), desc="Extrayendo unidades")
 
         retry_count = 1
         while self.failed_units and retry_count <= 3:
@@ -444,14 +724,28 @@ class ONPEScraper:
             retry_count += 1
             await asyncio.sleep(5)
 
-        # Totales agregados de ONPE (actasContabilizadas nacional).
-        self.actas_onpe_nacional = await self.fetch_totales_nacional()
+        # Totales agregados de ONPE (actasContabilizadas nacional). El warmup
+        # ya lo capturó al inicio; intentamos refrescar para tener el valor más
+        # actualizado posible, pero si falla conservamos el del warmup.
+        fresh = await self.fetch_totales_nacional()
+        if fresh is not None:
+            self.actas_onpe_nacional = fresh
 
+        # Limpiamos siempre el archivo de progreso (no se usa entre corridas).
+        self._clear_progress()
         await self.client.aclose()
+
         if self.failed_units:
-            print(f"\n[!] ADVERTENCIA: {len(self.failed_units)} unidades no pudieron obtenerse.")
-        else:
-            print("\n[V] Éxito: todos los datos obtenidos sin errores.")
+            print(f"\n[X] ABORTANDO: {len(self.failed_units)} unidades no se pudieron obtener.")
+            print(f"    El snapshot NO se generará. La próxima corrida empezará limpia.")
+            for t in self.failed_units[:10]:
+                print(f"      - {t.get('dep_name','?')} / {t.get('prov_name','?')} / {t.get('dist_name','?')}")
+            if len(self.failed_units) > 10:
+                print(f"      ... y {len(self.failed_units) - 10} más.")
+            return False
+
+        print("\n[V] Éxito: todos los datos obtenidos sin errores.")
+        return True
 
     def analyze_and_report(self):
         if not self.all_data:
@@ -509,82 +803,22 @@ class ONPEScraper:
         resumen['Proy. @ 100%'] = resumen['votos_proj_valid'].round(0).astype(int)
         total_proy_inc = int(resumen['Proy. @ 100%'].sum())
 
-        # ── 4. Metodología C — cascada de varianza en 3 niveles ──────────────────
-        unit_valid_tot = (
-            df_inc.groupby(['ambito', 'region_cont', 'prov_pais', 'dist_ciudad'])['votos_actuales']
-            .sum().rename('unit_valid_tot').reset_index()
-        )
-        df_sh = df_inc.merge(unit_valid_tot, on=['ambito', 'region_cont', 'prov_pais', 'dist_ciudad'])
-        df_sh['share'] = df_sh['votos_actuales'] / df_sh['unit_valid_tot'].clip(lower=1)
-
+        # ── 4. valid_rate (votos válidos / emitidos) por unidad, con cascada ─────
+        # Lo usamos en MC y en el resto del análisis para convertir emitidos a
+        # votos válidos (los que efectivamente se reparten entre K y R).
         unit_rates = df_inc.groupby(['ambito', 'region_cont', 'prov_pais', 'dist_ciudad']).agg(
             unit_valid=('votos_actuales', 'sum'),
             emit_parc=('total_emitidos_parc', 'first')
         ).reset_index()
         unit_rates['valid_rate'] = unit_rates['unit_valid'] / unit_rates['emit_parc'].clip(lower=1)
 
-        # Nivel 1: provincia/país
-        prov_share = (
-            df_sh.groupby(['ambito', 'region_cont', 'prov_pais', 'candidato'])['share']
-            .agg(mu='mean', sigma='std').reset_index()
-        )
-        prov_vrate = (
-            unit_rates.groupby(['ambito', 'region_cont', 'prov_pais'])['valid_rate']
-            .mean().rename('prov_vrate').reset_index()
-        )
-        # Nivel 2: departamento/continente
-        reg_share = (
-            df_sh.groupby(['ambito', 'region_cont', 'candidato'])['share']
-            .agg(mu='mean', sigma='std').reset_index()
-        )
-        reg_vrate = (
-            unit_rates.groupby(['ambito', 'region_cont'])['valid_rate']
-            .mean().rename('reg_vrate').reset_index()
-        )
-        # Nivel 3: nacional
-        nat_share = (
-            df_sh.groupby('candidato')['share']
-            .agg(mu_nat='mean', sigma_nat='std').reset_index()
-        )
-        nat_vrate = unit_rates['valid_rate'].mean()
-
-        d_prov_share = {
-            (r.ambito, r.region_cont, r.prov_pais, r.candidato): (r.mu, r.sigma)
-            for r in prov_share.itertuples()
-        }
-        d_prov_vrate = {
-            (r.ambito, r.region_cont, r.prov_pais): r.prov_vrate
-            for r in prov_vrate.itertuples()
-        }
-        d_reg_share = {
-            (r.ambito, r.region_cont, r.candidato): (r.mu, r.sigma)
-            for r in reg_share.itertuples()
-        }
-        d_reg_vrate = {
-            (r.ambito, r.region_cont): r.reg_vrate
-            for r in reg_vrate.itertuples()
-        }
-        d_nat_share = {
-            r.candidato: (r.mu_nat, 0.0 if pd.isna(r.sigma_nat) else r.sigma_nat)
-            for r in nat_share.itertuples()
-        }
-
-        all_candidates = resumen['candidato'].tolist()
-        delta    = {c: 0.0 for c in all_candidates}
-        varianza = {c: 0.0 for c in all_candidates}
-
-        def _sigma_cascade(ambito, region_cont, prov_pais, cand):
-            """(mu, sigma) por cascada provincia → región → nacional.
-            sigma nunca baja de SIGMA_MIN para reflejar incertidumbre residual
-            entre distritos incluidos (generalmente urbanos) y excluidos."""
-            mu_p, sig_p = d_prov_share.get((ambito, region_cont, prov_pais, cand), (None, None))
-            mu_r, sig_r = d_reg_share.get((ambito, region_cont, cand), (None, None))
-            mu_n, sig_n = d_nat_share.get(cand, (0.0, 0.0))
-            mu = mu_p if mu_p is not None else (mu_r if mu_r is not None else mu_n)
-            if   sig_p is not None and not pd.isna(sig_p): sigma = sig_p
-            elif sig_r is not None and not pd.isna(sig_r): sigma = sig_r
-            else:                                          sigma = sig_n
-            return mu, max(sigma, SIGMA_MIN)
+        d_prov_vrate = unit_rates.groupby(
+            ['ambito', 'region_cont', 'prov_pais']
+        )['valid_rate'].mean().to_dict()
+        d_reg_vrate  = unit_rates.groupby(
+            ['ambito', 'region_cont']
+        )['valid_rate'].mean().to_dict()
+        nat_vrate    = float(unit_rates['valid_rate'].mean())
 
         def _vr_cascade(ambito, region_cont, prov_pais):
             """valid_rate por cascada provincia → región → nacional."""
@@ -592,6 +826,8 @@ class ONPEScraper:
                 (ambito, region_cont, prov_pais),
                 d_reg_vrate.get((ambito, region_cont), nat_vrate)
             )
+
+        all_candidates = resumen['candidato'].tolist()
 
         meta_inc_df = meta[mask_inc].copy()
         meta_inc_df['emitidos_final_est'] = (
@@ -602,6 +838,23 @@ class ONPEScraper:
         # turnout = emitidos_parciales / (padron × pct_procesado/100)
         #         = emitidos_final_est  / padron
         # Solo calculable donde el padrón es conocido (electores_habiles > 0).
+        # ── Prior R1: por distrito, expectativa de share K/R y turnout. ──────
+        # Si no existe el cache, r1_priors queda vacío y el modelo sigue como antes.
+        r1_priors = _load_r1_priors()
+        if r1_priors:
+            print(f"  Prior R1 cargado: {len(r1_priors):,} distritos.")
+        # Detectamos los dos candidatos R2 por su nombre exacto en este snapshot
+        # para mapear el bucket "K"/"R" del prior a sus claves reales.
+        # Asumimos que el ranking actual encabeza a los dos finalistas.
+        _r2_top = resumen.head(2)['candidato'].tolist() if not resumen.empty else []
+        # Identificar cuál de los dos es "K" y cuál "R" según substring del nombre.
+        _r2_K = next((n for n in _r2_top if 'KEIKO' in n.upper()), None)
+        _r2_R = next((n for n in _r2_top if 'ROBERTO' in n.upper() or 'SANCHEZ' in n.upper()), None)
+        if _r2_K is None or _r2_R is None:
+            # Si no logramos identificar (ronda distinta, snapshot inicial vacío),
+            # desactivamos el prior para evitar errores.
+            r1_priors = {}
+
         meta_inc_df['turnout_obs'] = meta_inc_df.apply(
             lambda r: r['emitidos_final_est'] / r['electores_habiles']
             if r['electores_habiles'] > 0 else float('nan'), axis=1
@@ -636,17 +889,23 @@ class ONPEScraper:
         nat_mean_size = meta_inc_df['emitidos_final_est'].mean()  # para KPI global
 
         def _size_estimate(ambito, region_cont, prov_pais, total_emitidos_parc,
-                           pct_procesado, electores_habiles=0):
+                           pct_procesado, electores_habiles=0, dist_ciudad=None):
             """Estima total de votos emitidos a 100% para una unidad.
 
             Jerarquía de métodos (mejor a peor):
               1. Extrapolación directa: emitidos_parc / (pct/100)         [pct > 0]
-              2. Padrón × tasa de participación provincial/regional/nac.  [pct=0, padrón conocido]
-              3. Media de emitidos_final de vecinos incluidos             [pct=0, sin padrón]
+              2. Prior R1 del propio distrito: total_emitidos_R1 × factor  [pct=0, R1 disponible]
+              3. Padrón × tasa de participación provincial/regional/nac.   [pct=0, sin R1]
+              4. Media de emitidos_final de vecinos incluidos             [pct=0, sin padrón]
             """
             if pct_procesado > 0 and total_emitidos_parc > 0:
                 return total_emitidos_parc / (pct_procesado / 100.0)
-            # Método 2: padrón × turnout observado en la zona
+            # Método 2: prior R1 del distrito (turnout histórico real, ajustado).
+            if dist_ciudad is not None:
+                p = r1_priors.get((ambito, region_cont, prov_pais, dist_ciudad))
+                if p and p["total_emitidos_R1"] > 0:
+                    return p["total_emitidos_R1"] * TURNOUT_R2_OVER_R1
+            # Método 3: padrón × turnout observado en la zona
             if electores_habiles > 0:
                 turnout = d_prov_turnout.get(
                     (ambito, region_cont, prov_pais),
@@ -654,75 +913,30 @@ class ONPEScraper:
                 )
                 if pd.notna(turnout) and turnout > 0:
                     return electores_habiles * turnout
-            # Método 3: media de vecinos (fallback final)
+            # Método 4: media de vecinos (fallback final)
             nat_sz = _nm_peru if ambito == 'PERU' else _nm_ext
             return d_prov_mean_size.get(
                 (ambito, region_cont, prov_pais),
                 d_reg_mean_size.get((ambito, region_cont), nat_sz)
             )
 
-        # ── Varianza de unidades EXCLUIDAS — agregada a nivel de provincia/país ───
-        # Distritos de la misma provincia se tratan como bloque correlacionado:
-        # se acumula V_valid total y se aplica sigma UNA vez → cota conservadora
-        # que evita la diversificación artificial tipo √n.
-        # Unidades pct=0: se estima su tamaño desde vecinos incluidos.
-
-        prov_exc_V = {}  # (ambito, region_cont, prov_pais) → V_valid total excluido
+        # ── Bloques de excluidos (V_total) — solo para KPIs downstream ─────────
+        # Necesitamos `prov_exc_blocks` con V_total por bloque para reportar el
+        # peso del componente excluido en la potencia estadística. La varianza
+        # ahora se calcula vía Monte Carlo, no por bloque.
+        prov_exc_blocks = {}
         for row in meta_exc.itertuples():
             key = (row.ambito, row.region_cont, row.prov_pais)
             emit_est = _size_estimate(row.ambito, row.region_cont, row.prov_pais,
                                       row.total_emitidos_parc, row.pct_procesado,
-                                      row.electores_habiles)
+                                      row.electores_habiles, row.dist_ciudad)
             if emit_est <= 0:
                 continue
             V_valid = emit_est * _vr_cascade(row.ambito, row.region_cont, row.prov_pais)
-            prov_exc_V[key] = prov_exc_V.get(key, 0.0) + V_valid
-
-        for (ambito, region_cont, prov_pais), V_total in prov_exc_V.items():
-            if V_total <= 0:
-                continue
-            for cand in all_candidates:
-                mu, sigma = _sigma_cascade(ambito, region_cont, prov_pais, cand)
-                delta[cand]    += mu * V_total
-                varianza[cand] += (sigma * V_total) ** 2  # bloque correlacionado
-
-        # ── Varianza de fracción RESTANTE de unidades INCLUIDAS — agregada por prov.
-        # Las actas aún no contadas de los distritos incluidos también contribuyen
-        # a la incertidumbre. A 100% procesado V_restante=0 → contribución nula.
-
-        # Para la cola de distritos ya incluidos guardamos también el factor de
-        # cobertura ponderado (frac_rest_avg) por bloque provincial. Cuanto más
-        # avanzado está un bloque, más se amortigua su contribución de varianza:
-        # la cola de un distrito casi cerrado se parece a la distribución ya
-        # observada del propio distrito, no a la dispersión entre distritos.
-        prov_inc_V_rem      = {}
-        prov_inc_V_rem_wfr  = {}   # Σ V_rem · frac_rest (numerador del promedio)
-        for row in meta[mask_inc].itertuples():
-            if row.total_emitidos_parc <= 0 or row.pct_procesado >= 100.0:
-                continue
-            key = (row.ambito, row.region_cont, row.prov_pais)
-            frac_rest = 1.0 - row.pct_procesado / 100.0
-            emit_est  = row.total_emitidos_parc / (row.pct_procesado / 100.0)
-            V_rem = emit_est * _vr_cascade(row.ambito, row.region_cont, row.prov_pais) * frac_rest
-            prov_inc_V_rem[key]     = prov_inc_V_rem.get(key, 0.0)     + V_rem
-            prov_inc_V_rem_wfr[key] = prov_inc_V_rem_wfr.get(key, 0.0) + V_rem * frac_rest
-
-        for (ambito, region_cont, prov_pais), V_rem_total in prov_inc_V_rem.items():
-            if V_rem_total <= 0:
-                continue
-            # frac_rest promedio ponderado por V_rem del bloque (∈ (0, 1]).
-            frac_rest_avg = prov_inc_V_rem_wfr[(ambito, region_cont, prov_pais)] / V_rem_total
-            for cand in all_candidates:
-                _, sigma = _sigma_cascade(ambito, region_cont, prov_pais, cand)
-                # Sigma efectivo para la cola: piso bajo (acta-a-acta, no
-                # distrito-a-distrito) y amortiguación adicional por avance.
-                sigma_eff = max(min(sigma, sigma * frac_rest_avg), SIGMA_MIN_TAIL)
-                varianza[cand] += (sigma_eff * V_rem_total) ** 2  # sin delta: proyección ya estima
+            block = prov_exc_blocks.setdefault(key, {"V_total": 0.0})
+            block["V_total"] += V_valid
 
         # ── Volumen de actas IMPUGNADAS (solo informativo) ─────────────────────
-        # Las actas impugnadas NO están contabilizadas; ya están reflejadas en
-        # la fuente 2 (fracción restante de incluidas) como votos pendientes.
-        # Aquí solo se totaliza para reportar el KPI de "Actas impugnadas".
         prov_jee_V = {}
         for row in meta[mask_inc].itertuples():
             if row.actas_enviadas_jee <= 0 or row.actas_contabilizadas <= 0:
@@ -733,21 +947,176 @@ class ONPEScraper:
                     * _vr_cascade(row.ambito, row.region_cont, row.prov_pais)
             prov_jee_V[key] = prov_jee_V.get(key, 0.0) + V_jee
 
-        # Proyección corregida = incluidas + estimado de excluidas
-        resumen['delta_exc']  = resumen['candidato'].map(delta).fillna(0.0)
-        # var_total: suma de DOS fuentes de incertidumbre:
-        #   1) unidades excluidas (pct < umbral, incluidas las de pct=0)
-        #   2) fracción aún no contabilizada de unidades incluidas
-        resumen['var_total']  = resumen['candidato'].map(varianza).fillna(0.0)
-        resumen['_proy_corr'] = resumen['Proy. @ 100%'] + resumen['delta_exc']
-        total_corr            = resumen['_proy_corr'].sum()
-        resumen['% Est.']     = (resumen['_proy_corr'] / max(total_corr, 1) * 100).round(2)
-        resumen['Margen ± pp']= (1.96 * resumen['var_total'] ** 0.5 / max(total_corr, 1) * 100).round(2)
-        # Guardar varianza total antes del drop — necesario para cálculo de potencia
-        _var_total = resumen.set_index('candidato')['var_total'].to_dict()
+        # ══════════════════════════════════════════════════════════════════════
+        # MODELO BAYESIANO JERÁRQUICO + MONTE CARLO
+        # ══════════════════════════════════════════════════════════════════════
+        # Para cada distrito i, modelamos la proporción de Keiko entre votos
+        # válidos (K vs R) como Beta(α_i, β_i) donde:
+        #   - prior viene de R1 + matriz de transferencia, descontado por a₀
+        #   - observación viene de los votos R2 contados hasta ahora
+        # Correlación entre distritos se captura con random effects en MC:
+        #   - ε_matriz (global): error de la matriz de transferencia
+        #   - ε_región (regional): tendencia compartida en la región
+        # ══════════════════════════════════════════════════════════════════════
+        mc_samples_K = None
+        mc_samples_R = None
+        if _r2_K and _r2_R:
+            # 1. Observaciones R2 por distrito (K y R en votos válidos)
+            df_K_byd = (df[df['candidato'] == _r2_K]
+                        .groupby(['ambito', 'region_cont', 'prov_pais', 'dist_ciudad'])
+                        ['votos_actuales'].sum())
+            df_R_byd = (df[df['candidato'] == _r2_R]
+                        .groupby(['ambito', 'region_cont', 'prov_pais', 'dist_ciudad'])
+                        ['votos_actuales'].sum())
 
-        resumen.drop(columns=['delta_exc', 'var_total', '_proy_corr'], inplace=True)
+            districts = meta.copy()
+            districts['K_obs'] = (districts.set_index(['ambito','region_cont','prov_pais','dist_ciudad'])
+                                  .index.map(df_K_byd).fillna(0)).values
+            districts['R_obs'] = (districts.set_index(['ambito','region_cont','prov_pais','dist_ciudad'])
+                                  .index.map(df_R_byd).fillna(0)).values
+
+            # 2. Tamaño esperado del distrito en votos válidos
+            districts['emit_est'] = districts.apply(
+                lambda r: _size_estimate(r['ambito'], r['region_cont'], r['prov_pais'],
+                                         r['total_emitidos_parc'], r['pct_procesado'],
+                                         r['electores_habiles'], r['dist_ciudad']),
+                axis=1
+            )
+            districts['valid_rate'] = districts.apply(
+                lambda r: _vr_cascade(r['ambito'], r['region_cont'], r['prov_pais']),
+                axis=1
+            )
+            districts['V'] = districts['emit_est'] * districts['valid_rate']
+
+            # 3. Prior R1 (share K y strength) por distrito.
+            # La "evidencia" del prior es la masa de R1 que la matriz de
+            # transferencia mapea efectivamente a K o R en R2 — no incluye
+            # blanco/null/abstención que no informan sobre K vs R. Para
+            # distritos chicos eso evita inflar artificialmente el prior.
+            def _row_prior(row):
+                p = r1_priors.get((row['ambito'], row['region_cont'],
+                                   row['prov_pais'], row['dist_ciudad']))
+                if not p or p['prior_share_K'] is None:
+                    return 0.5, 0.0   # sin prior: mu=0.5, strength=0 → prior no influye
+                evidence_R1 = float(p['votos_K_esperados']) + float(p['votos_R_esperados'])
+                strength = min(PRIOR_STRENGTH_CAP, PRIOR_DISCOUNT_A0 * evidence_R1)
+                return float(p['prior_share_K']), float(strength)
+
+            prior_data = districts.apply(_row_prior, axis=1)
+            districts['prior_K']        = [p[0] for p in prior_data]
+            districts['prior_strength'] = [p[1] for p in prior_data]
+
+            # 4. Códigos de región para random effects jerárquicos
+            districts['region_key'] = districts['ambito'] + '|' + districts['region_cont']
+            region_codes, region_uniques = pd.factorize(districts['region_key'])
+            n_regions = len(region_uniques)
+
+            # σ del random effect regional. NO es la dispersión OBSERVADA entre
+            # regiones (eso ya está capturado en `prior_K[i]` por distrito), sino
+            # la INCERTIDUMBRE adicional sobre cuánto la matriz de transferencia
+            # aplica uniformemente a cada región. Sin data histórica para
+            # calibrar, usamos un valor fijo razonable: el error nacional de la
+            # matriz puede variar regionalmente en ±3-4pp.
+            sigma_between_regions = 0.04
+
+            # 5. Arrays NumPy para Monte Carlo vectorizado
+            N = len(districts)
+            prior_K_arr        = districts['prior_K'].values.astype(float)
+            prior_strength_arr = districts['prior_strength'].values.astype(float)
+            K_obs_arr          = districts['K_obs'].values.astype(float)
+            R_obs_arr          = districts['R_obs'].values.astype(float)
+            V_arr              = districts['V'].values.astype(float)
+            V_arr              = np.where(np.isfinite(V_arr), V_arr, 0.0)
+            region_codes_arr   = region_codes
+
+            # 6. Monte Carlo
+            # Approach profesional de election forecasting (FiveThirtyEight,
+            # NYT Upshot, AP): los votos ya contados son verdad fija. La
+            # incertidumbre solo se aplica al voto REMANENTE de cada distrito.
+            # Cambio respecto del modelo bayesiano de inferencia poblacional:
+            #   antes: K_final_i = share_K_i × V_total_i (toda V sujeta a noise)
+            #   ahora: K_final_i = K_obs_i + share_K_i × V_remanente_i
+            # share_K_i sigue siendo el posterior Beta (combina prior R1 +
+            # observación), pero solo se aplica a la fracción no contada.
+            V_remaining_arr = np.maximum(V_arr - K_obs_arr - R_obs_arr, 0.0)
+
+            rng = np.random.default_rng()
+            S = MC_ITERATIONS
+            mc_samples_K = np.zeros(S)
+            mc_samples_R = np.zeros(S)
+
+            for it in range(S):
+                # Random effects: matriz nacional + variación regional
+                eps_matriz = rng.normal(0.0, SIGMA_MATRIX_TRANSFER)
+                eps_region = rng.normal(0.0, sigma_between_regions, size=n_regions)
+
+                # Prior ajustado por random effects
+                adjusted_prior = np.clip(
+                    prior_K_arr + eps_matriz + eps_region[region_codes_arr],
+                    0.005, 0.995,
+                )
+
+                # Posterior Beta(α, β) por distrito — share inferida combinando
+                # prior R1 con la observación R2 acumulada hasta ahora.
+                alpha = prior_strength_arr * adjusted_prior + K_obs_arr
+                beta_ = prior_strength_arr * (1.0 - adjusted_prior) + R_obs_arr
+                no_info_mask = (alpha + beta_) <= 0
+                alpha = np.where(no_info_mask, 1.0, alpha)
+                beta_ = np.where(no_info_mask, 1.0, beta_)
+                alpha = np.maximum(alpha, 0.01)
+                beta_ = np.maximum(beta_, 0.01)
+
+                shares_K = rng.beta(alpha, beta_)
+                # Proyección final por distrito: K_observado (fijo) + Binomial
+                # sample del voto remanente. Incluir el sampleo Binomial captura
+                # la variabilidad natural de los últimos votos (incluso con θ
+                # conocida exactamente, sortear N votos a probabilidad p tiene
+                # varianza N×p×(1-p)). Sin esto, el modelo subestima la
+                # incertidumbre residual del conteo.
+                V_rem_int = V_remaining_arr.astype(np.int64)
+                K_remaining = rng.binomial(V_rem_int,
+                                            np.clip(shares_K, 0.0, 1.0))
+                R_remaining = V_rem_int - K_remaining
+                K_vals = K_obs_arr + K_remaining
+                R_vals = R_obs_arr + R_remaining
+
+                mc_samples_K[it] = K_vals.sum()
+                mc_samples_R[it] = R_vals.sum()
+
+            # 7. Estadísticos de los samples
+            mean_K = float(mc_samples_K.mean())
+            mean_R = float(mc_samples_R.mean())
+            std_K  = float(mc_samples_K.std())
+            std_R  = float(mc_samples_R.std())
+        else:
+            # Sin K/R identificados (R1 hipotético o snapshot vacío): caemos a
+            # los totales observados sin proyección bayesiana.
+            mean_K, mean_R, std_K, std_R = 0.0, 0.0, 0.0, 0.0
+
+        total_corr = int(round(mean_K + mean_R))
+
+        def _proj_for(cand):
+            if cand == _r2_K: return int(round(mean_K))
+            if cand == _r2_R: return int(round(mean_R))
+            return 0
+
+        def _marg_for(cand):
+            if total_corr <= 0:
+                return 0.0
+            if cand == _r2_K:
+                return round(1.96 * std_K / total_corr * 100, 2)
+            if cand == _r2_R:
+                return round(1.96 * std_R / total_corr * 100, 2)
+            return 0.0
+
+        resumen['Proy. @ 100%'] = resumen['candidato'].map(_proj_for).astype(int)
+        resumen['% Est.']       = (resumen['Proy. @ 100%'] / max(total_corr, 1) * 100).round(2)
+        resumen['Margen ± pp']  = resumen['candidato'].map(_marg_for)
         resumen = resumen.sort_values('% Est.', ascending=False)
+
+        # Guardamos los samples para `_prob_orden_final` (Monte Carlo, exacto).
+        self._mc_samples_K = mc_samples_K
+        self._mc_samples_R = mc_samples_R
 
         # ── 5. KPIs ──────────────────────────────────────────────────────────────
         n_peru_inc   = df_inc[df_inc['ambito'] == 'PERU'][['region_cont', 'prov_pais', 'dist_ciudad']].drop_duplicates().shape[0]
@@ -767,7 +1136,7 @@ class ONPEScraper:
         exc_meta['emit_final_est'] = exc_meta.apply(
             lambda r: _size_estimate(r['ambito'], r['region_cont'], r['prov_pais'],
                                      r['total_emitidos_parc'], r['pct_procesado'],
-                                     r['electores_habiles']), axis=1
+                                     r['electores_habiles'], r['dist_ciudad']), axis=1
         )
         all_emit = pd.concat([
             inc_meta[['pct_procesado', 'emit_final_est']],
@@ -821,7 +1190,7 @@ class ONPEScraper:
         ))
 
         # ── 8. Potencia estadística ──────────────────────────────────────────────
-        V_exc_total = sum(prov_exc_V.values())
+        V_exc_total = sum(b["V_total"] for b in prov_exc_blocks.values())
         V_inc_total = sum(
             (row.total_emitidos_parc / (row.pct_procesado / 100.0))
             * _vr_cascade(row.ambito, row.region_cont, row.prov_pais)
@@ -831,14 +1200,20 @@ class ONPEScraper:
         peso_exc_pct = V_exc_total / max(V_inc_total + V_exc_total, 1) * 100
 
         def _prob_orden_final(cand_a, cand_b, pct_a, pct_b):
-            """P(A > B en resultado final) bajo aprox. normal, varianzas independientes.
-            var_total incluye: (1) unidades excluidas y (2) fracción pendiente de incluidas."""
-            lead = pct_a - pct_b
-            se   = (_var_total.get(cand_a, 0.0) + _var_total.get(cand_b, 0.0)) ** 0.5 \
-                   / max(total_corr, 1) * 100
-            if se <= 0:
-                return 1.0 if lead > 0 else 0.5
-            return (1.0 + math.erf(lead / se / math.sqrt(2))) / 2.0
+            """P(A > B en resultado final) usando muestras del Monte Carlo
+            bayesiano. Para R2 con dos candidatos: la probabilidad es la
+            fracción exacta de escenarios MC donde A termina arriba de B."""
+            sK = self._mc_samples_K
+            sR = self._mc_samples_R
+            if sK is None or sR is None:
+                # Fallback defensivo: sin muestras, devolvemos algo razonable.
+                return 1.0 if pct_a > pct_b else (0.0 if pct_a < pct_b else 0.5)
+            if cand_a == _r2_K and cand_b == _r2_R:
+                return float((sK > sR).mean())
+            if cand_a == _r2_R and cand_b == _r2_K:
+                return float((sR > sK).mean())
+            # Combinaciones no esperadas en R2.
+            return 1.0 if pct_a > pct_b else (0.0 if pct_a < pct_b else 0.5)
 
         print("\n" + "─" * 80)
         print("POTENCIA ESTADÍSTICA")
@@ -875,77 +1250,59 @@ class ONPEScraper:
 
         # ── 9. Metodología ───────────────────────────────────────────────────────
         print("\n" + "─" * 80)
-        print("METODOLOGÍA")
+        print("METODOLOGÍA — Bayesiano Jerárquico + Monte Carlo")
         print("─" * 80)
         print(f"""
   1. RECOPILACIÓN (Nivel 3 — Distrito/Ciudad)
-     Se obtienen votos válidos por candidato, % de actas contabilizadas y votos
+     Se obtienen votos válidos por candidato, % de actas contabilizadas y
      emitidos acumulados para cada distrito (Perú) y ciudad (Extranjero).
 
-  2. FACTOR DE PROYECCIÓN POR UNIDAD
-     Se usan dos proyecciones paralelas:
+  2. PRIOR R1 (Power Priors, Ibrahim & Chen 2000)
+     Para cada distrito i se usa su comportamiento histórico en R1 + una
+     matriz nacional de transferencia R1→R2 (de encuesta) para estimar el
+     share esperado de K vs R:
+          share_prior_K_i = Σ_c (votos_R1_c_i × P(K | R1=c)) / total_transferido
+     El "tamaño" del prior se descuenta por a₀={PRIOR_DISCOUNT_A0} y se acota:
+          prior_strength_i = min({PRIOR_STRENGTH_CAP}, a₀ × evidencia_R1_K+R_i)
+     El cap captura el error estructural de la matriz (~3pp ≈ n=300 efectivas).
+     Para distritos chicos, el prior es proporcionalmente débil.
 
-     a) Votos válidos absolutos ("Proy. @ 100%"):
-          proy_valid = votos_válidos_actuales / (% actas / 100)
-        Proyecta directamente votos válidos. Asume que las actas pendientes
-        tienen la misma densidad de votos válidos que las ya procesadas.
-        Más preciso en absolutos: no infla por tasa de blancos/nulos.
+  3. POSTERIOR Beta-Binomial POR DISTRITO
+     Combinamos prior con observación R2 vía conjugación:
+          α_i = prior_strength_i × share_prior_K_i + K_observado_R2_i
+          β_i = prior_strength_i × (1 − share_prior_K_i) + R_observado_R2_i
+          share_K_i ~ Beta(α_i, β_i)
+     Con observación abundante, observación domina. Con poca o nula
+     observación, el prior R1 sostiene la estimación.
 
-     b) Para ponderación de shares y varianza (interno):
-          emitidos_final_est = totalVotosEmitidos_parcial / (% actas / 100)
-          factor = emitidos_final_est / Σ votos_válidos_actuales
-        Captura la variabilidad real en tamaño de actas y la tasa válidos/emitidos
-        de cada unidad. Usado para calcular % Est. y el margen de error.
+  4. CORRELACIÓN VIA RANDOM EFFECTS JERÁRQUICOS
+     En cada iteración Monte Carlo se sortean dos efectos correlacionados:
+       ε_matriz  ~ N(0, σ={SIGMA_MATRIX_TRANSFER:.2f})    [error de la encuesta de transferencia]
+       ε_región  ~ N(0, σ_R)                  [variación entre regiones]
+     Ambos se aplican a la mu del prior antes del sampling Beta — los
+     distritos NO son independientes; comparten sesgos comunes nacional y
+     regional.
 
-  3. UMBRAL DE INCLUSIÓN (actasContabilizadas ≥ {MIN_PCT_PROYECCION:.0f}%)
-     Unidades con <{MIN_PCT_PROYECCION:.0f}% de actas se excluyen de la proyección directa
-     (factor >10x = no confiable). Se listan y se incorporan al margen.
+  5. PROYECCIÓN NACIONAL (Monte Carlo, {MC_ITERATIONS} iteraciones)
+     En cada iteración:
+       - Sortear ε_matriz y ε_región
+       - Por distrito i: ajustar prior, calcular α/β, samplear share_K_i
+       - K_total_iter = Σ_i (share_K_i × V_i),  R_total_iter = Σ_i ((1-share_K_i) × V_i)
+     Los 5,000 samples nacionales arrojan:
+       % Est.        = mean(samples) / total_proyectado × 100
+       Margen ± pp   = 1.96 × std(samples) / total × 100    (IC 95%)
+       p_invert      = fracción de samples donde el orden se invierte (exacto)
 
-  4. AGREGACIÓN NACIONAL
-     Se suman los votos proyectados de unidades incluidas por candidato.
-     Los porcentajes se calculan sobre votos válidos proyectados.
+  6. UMBRAL DE INCLUSIÓN (presentación, no afecta cálculo)
+     Distritos con ≥{MIN_PCT_PROYECCION:.0f}% de actas se reportan como "incluidos en la
+     proyección". El modelo bayesiano usa TODOS los distritos por igual; el
+     umbral solo separa UI/reporte. Distritos por debajo del umbral aportan
+     vía su prior R1 + cualquier observación parcial.
 
-  5. MARGEN DE ERROR (cascada 3 niveles, dos fuentes)
-
-     El margen captura DOS fuentes de incertidumbre:
-
-     A) Unidades EXCLUIDAS (pct < {MIN_PCT_PROYECCION:.0f}%):
-          tamaño_U = emitidos_parc_U / (pct_U/100)    [si pct_U > 0]
-                   = media de unidades incluidas de la misma prov/región/ámbito
-                                                       [si pct_U = 0, sin datos]
-          V_valid_U = tamaño_U × valid_rate
-          delta_C   = mu_C × V_valid_U        [estimación del aporte]
-          var_C    += (sigma_C × V_valid_U)²  [incertidumbre total]
-
-     B) Fracción NO CONTABILIZADA de unidades INCLUIDAS:
-          V_restante_U = emitidos_final_est × valid_rate × (1 - pct_U/100)
-          sigma_eff    = max(min(sigma_C, sigma_C × frac_rest_avg_block),
-                             SIGMA_MIN_TAIL)
-          var_C       += (sigma_eff × V_restante_U)²
-        Sin delta: la proyección ya estima el punto central para estas unidades.
-        A 100% procesado V_restante = 0 → contribución nula. La amortiguación
-        por (1 − pct/100) refleja que la cola de un distrito casi cerrado se
-        parece a su propia distribución observada (acta-a-acta), no a la
-        dispersión entre distritos. SIGMA_MIN_TAIL ≪ SIGMA_MIN.
-
-     Las actas impugnadas no se modelan aparte: ya están contadas como
-     pendientes en B (no figuran en actas_contabilizadas → suman a la fracción
-     restante de su distrito). Su eventual anulación no se suma como swing
-     adicional porque, en la práctica, distorsiona poco el porcentaje nacional.
-
-     El prior de voto para sigma se obtiene por cascada de 3 niveles:
-       Nivel 1: misma provincia/país    (más homogéneo estratégicamente)
-       Nivel 2: mismo departamento/continente (si nivel 1 tiene <2 unidades)
-       Nivel 3: nacional                (fallback final)
-
-     sigma mínima garantizada: {SIGMA_MIN:.0%} por bloque (piso para reflejar que
-     los distritos excluidos tienden a ser más rurales que los incluidos).
-
-     Los distritos excluidos de la misma provincia se tratan como bloque
-     correlacionado → cota conservadora que evita diversificación tipo √n.
-
-     "% Est." incorpora el aporte esperado de unidades excluidas.
-     Margen ± pp (IC 95%) = 1.96 × sqrt(Σ var_C) / total × 100, por candidato.
+  Este modelo reemplaza al cascade frecuentista anterior. Elimina umbrales
+  ad-hoc (MIN_N_*), pisos de sigma por cobertura y el override de extranjero
+  ciego: la incertidumbre se propaga automáticamente vía el posterior Beta y
+  los random effects del Monte Carlo.
 """)
 
         # ── 10. Guardar resultados ────────────────────────────────────────────────
@@ -964,7 +1321,7 @@ class ONPEScraper:
             if not meta_exc.empty:
                 # Enriquecer CSV de excluidas con columnas de verificación del padrón
                 exc_export = exc_meta.copy()
-                exc_export['emit_est_votos']  = exc_export['emit_final_est'].round(0).astype(int)
+                exc_export['emit_est_votos']  = exc_export['emit_final_est'].fillna(0).round(0).astype(int)
                 exc_export['metodo_estimacion'] = exc_export.apply(
                     lambda r: 'extrapolacion'   if r['pct_procesado'] > 0
                     else      'padron×turnout'  if r['electores_habiles'] > 0
@@ -1005,15 +1362,114 @@ class ONPEScraper:
             ts           = datetime.datetime.now(lima_tz).replace(microsecond=0)
             generated_at = ts.isoformat()
 
+            # ── Agregación por región (departamento o continente) ────────────
+            # Para el mapa de calor del dashboard: cobertura, ganador actual y
+            # ganador proyectado por unidad geográfica de Nivel 1.
+            snap_regiones = []
+            meta_with_est = meta.copy()
+            # `emit_final_est` debe estimar el tamaño TOTAL del distrito (a 100%
+            # del conteo), incluso cuando pct=0. Usamos _size_estimate, que
+            # cubre los 3 métodos: extrapolación / padrón×turnout / media de
+            # vecinos. Antes esto era 0 para pct=0, lo que provocaba que el
+            # `pct_pond` regional ignorara a los distritos sin datos y diera
+            # cifras engañosamente altas (ej.: AMÉRICA 93% con 5/95 incluidos).
+            meta_with_est['emit_final_est'] = meta_with_est.apply(
+                lambda r: _size_estimate(r['ambito'], r['region_cont'], r['prov_pais'],
+                                         r['total_emitidos_parc'], r['pct_procesado'],
+                                         r['electores_habiles'], r['dist_ciudad']),
+                axis=1
+            )
+            for (amb, reg), g in meta_with_est.groupby(['ambito', 'region_cont']):
+                n_inc_r = int((g['pct_procesado'] >= MIN_PCT_PROYECCION).sum())
+                n_exc_r = int((g['pct_procesado'] <  MIN_PCT_PROYECCION).sum())
+                den_r   = float(g['emit_final_est'].clip(lower=1).sum())
+                pct_pond_r = float((g['pct_procesado'] * g['emit_final_est']).sum() / den_r) if den_r > 0 else 0.0
+
+                cand_g = (df[(df['ambito'] == amb) & (df['region_cont'] == reg)]
+                          .groupby('candidato')['votos_actuales'].sum())
+                total_cand_r = float(cand_g.sum())
+
+                # Votos PROYECTADOS por candidato en la región. Combina:
+                #   1) extrapolación de votos_proj_valid en distritos incluidos
+                #   2) si no hay incluidas con votos, agregación del prior R1
+                # Devuelve un dict {candidato: votos_proy}. Usado para calcular
+                # pct_proyectado, que es lo que el dashboard muestra cuando una
+                # región todavía no tiene actas reales.
+                proy_g_full = (df_inc[(df_inc['ambito'] == amb)
+                                      & (df_inc['region_cont'] == reg)]
+                              .groupby('candidato')['votos_proj_valid'].sum())
+                proy_votes = {str(n): float(v) for n, v in proy_g_full.items()}
+                if sum(proy_votes.values()) <= 0 and r1_priors and _r2_K and _r2_R:
+                    K_pp, R_pp = 0.0, 0.0
+                    for key, p in r1_priors.items():
+                        if key[0] == amb and key[1] == reg:
+                            K_pp += float(p.get('votos_K_esperados') or 0)
+                            R_pp += float(p.get('votos_R_esperados') or 0)
+                    if K_pp > 0 or R_pp > 0:
+                        proy_votes[_r2_K] = K_pp
+                        proy_votes[_r2_R] = R_pp
+                total_proy_r = sum(proy_votes.values())
+
+                cand_list = []
+                ganador, mejor_votos = None, 0  # solo declarar ganador con >0 votos
+                for nom, v in cand_g.items():
+                    pct_act = (float(v) / total_cand_r * 100.0) if total_cand_r > 0 else 0.0
+                    pct_proy = (proy_votes.get(str(nom), 0.0) / total_proy_r * 100.0
+                                if total_proy_r > 0 else 0.0)
+                    cand_list.append({
+                        "nombre":         str(nom),
+                        "votos_actuales": int(v),
+                        "pct_actual":     round(pct_act, 2),
+                        "pct_proyectado": round(pct_proy, 2),
+                    })
+                    if int(v) > mejor_votos:
+                        mejor_votos, ganador = int(v), str(nom)
+
+                # Ganador proyectado:
+                #   1) si hay distritos incluidos con observación R2, usar la
+                #      suma de votos_proj_valid (proyección directa de R2);
+                #   2) si no, derivar del prior R1 agregado de la región
+                #      (modelo bayesiano: aún regiones sin R2 tienen
+                #      proyección desde el histórico + matriz de transferencia).
+                proy_g = (df_inc[(df_inc['ambito'] == amb) & (df_inc['region_cont'] == reg)]
+                          .groupby('candidato')['votos_proj_valid'].sum())
+                ganador_proy, mejor_proy = None, 0.0
+                for nom, v in proy_g.items():
+                    if float(v) > mejor_proy:
+                        mejor_proy, ganador_proy = float(v), str(nom)
+                if ganador_proy is None and r1_priors and _r2_K and _r2_R:
+                    K_p, R_p = 0.0, 0.0
+                    for key, p in r1_priors.items():
+                        if key[0] == amb and key[1] == reg:
+                            K_p += float(p.get('votos_K_esperados') or 0)
+                            R_p += float(p.get('votos_R_esperados') or 0)
+                    if K_p > 0 or R_p > 0:
+                        ganador_proy = _r2_K if K_p >= R_p else _r2_R
+
+                snap_regiones.append({
+                    "nombre":             str(reg),
+                    "ambito":             str(amb),
+                    "n_inc":              n_inc_r,
+                    "n_exc":              n_exc_r,
+                    "pct_pond":           round(pct_pond_r, 2) if math.isfinite(pct_pond_r) else 0.0,
+                    "ganador":            ganador,
+                    "ganador_proyectado": ganador_proy,
+                    "candidatos":         cand_list,
+                })
+
             snap_kpis = {
                 "peru_inc":        int(n_peru_inc),
                 "peru_exc":        int(n_peru_exc),
                 "ext_inc":         int(n_ext_inc),
                 "ext_exc":         int(n_ext_exc),
                 "votos_actuales":  int(votos_act),
-                "proy_total":      int(total_proy_inc),
-                "pct_pond_inc":    round(float(pct_pond_inc), 2),
-                "pct_pond_global": round(float(pct_pond_global), 2),
+                # Proyección total CORREGIDA (incluidas + estimación de excluidas),
+                # consistente con `% Est.` y con el `proy_100` por candidato.
+                "proy_total":      int(total_corr),
+                "pct_pond_inc":    (round(float(pct_pond_inc), 2)
+                                    if math.isfinite(float(pct_pond_inc)) else None),
+                "pct_pond_global": (round(float(pct_pond_global), 2)
+                                    if math.isfinite(float(pct_pond_global)) else None),
                 "actas_jee":       int(n_actas_jee),
                 "votos_jee_est":   int(votos_jee_est),
                 # Total nacional del padrón (electores hábiles) — útil para
@@ -1046,13 +1502,23 @@ class ONPEScraper:
                     })
 
             snap_metodologia = {
-                "min_pct_proyeccion": MIN_PCT_PROYECCION,
-                "sigma_min":          SIGMA_MIN,
-                "fuentes_varianza":   ["excluidas", "fraccion_restante_incluidas"],
+                "min_pct_proyeccion":    MIN_PCT_PROYECCION,
+                "modelo":                "beta_binomial_jerarquico_monte_carlo",
+                "prior_discount_a0":     PRIOR_DISCOUNT_A0,
+                "prior_strength_cap":    PRIOR_STRENGTH_CAP,
+                "sigma_matriz_transfer": SIGMA_MATRIX_TRANSFER,
+                "mc_iterations":         MC_ITERATIONS,
+                "fuentes_varianza": [
+                    "prior_r1_per_distrito",
+                    "observacion_r2_per_distrito",
+                    "random_effect_nacional_matriz_transferencia",
+                    "random_effect_regional",
+                ],
             }
 
             snapshot = _build_snapshot(resumen, snap_kpis, snap_comparaciones,
-                                       snap_metodologia, generated_at)
+                                       snap_metodologia, generated_at,
+                                       regiones=snap_regiones)
             snap_path = _save_snapshot(snapshot)
             _update_snapshot_index()
             print(f"  Snapshot:            {snap_path}")
@@ -1065,8 +1531,14 @@ def _build_snapshot(resumen: pd.DataFrame,
                     kpis: dict,
                     comparaciones: list,
                     metodologia: dict,
-                    generated_at: str) -> dict:
-    """Construye el payload v1 a partir del resumen y KPIs ya calculados."""
+                    generated_at: str,
+                    regiones: list | None = None) -> dict:
+    """Construye el payload a partir del resumen y KPIs ya calculados.
+
+    El campo `regiones` (opcional) contiene una agregación por
+    departamento/continente para alimentar el mapa de calor del dashboard.
+    Snapshots antiguos sin este campo siguen siendo válidos en el dashboard.
+    """
     candidatos = []
     for _, row in resumen.iterrows():
         c = {
@@ -1078,7 +1550,7 @@ def _build_snapshot(resumen: pd.DataFrame,
             "margen_pp":      float(row['Margen ± pp']),
         }
         candidatos.append(c)
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "generated_at":   generated_at,
         "id_eleccion":    ID_ELECCION,
@@ -1088,6 +1560,9 @@ def _build_snapshot(resumen: pd.DataFrame,
         "comparaciones":  comparaciones,
         "metodologia":    metodologia,
     }
+    if regiones is not None:
+        payload["regiones"] = regiones
+    return payload
 
 
 def _save_snapshot(snapshot: dict) -> str:
@@ -1170,7 +1645,10 @@ def _update_snapshot_index() -> None:
 
 async def main():
     scraper = ONPEScraper()
-    await scraper.run()
+    ok = await scraper.run()
+    if not ok:
+        # Salimos sin tocar nada más: ningún CSV, ningún snapshot, ningún upload.
+        sys.exit(1)
     scraper.analyze_and_report()
 
 if __name__ == "__main__":

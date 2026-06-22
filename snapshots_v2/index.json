@@ -1,0 +1,13 @@
+{
+  "snapshots": [
+    {
+      "filename": "snapshot_20260607_222639.json",
+      "generated_at": "2026-06-07T22:26:39-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 59.92,
+      "actas_contabilizadas_onpe": 58.646
+    }
+  ]
+}

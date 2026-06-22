@@ -52,19 +52,6 @@ export function HeroComparison({ snapshot, previous, diff, resolveName, config }
       }
     : null
   const leader  = b && a.pct_est >= b.pct_est ? a : b
-  const trailer = leader === a ? b : a
-  let thresholdLine: string | null = null
-  if (b && topComp && leader && trailer && pInvert >= 0.05 && pInvert <= 0.45) {
-    const totalRemaining = snapshot.kpis.proy_total - snapshot.kpis.votos_actuales
-    const trailerNeeded  = leader.proy_100 - trailer.votos_actuales
-    if (totalRemaining > 0 && trailerNeeded > 0) {
-      const frac = trailerNeeded / totalRemaining
-      if (frac > 0 && frac <= 1) {
-        const pct = Math.round(frac * 100)
-        thresholdLine = `Para invertir el orden, ${resolveName(trailer.nombre)} necesitaría más del ${pct}% de los votos aún por contabilizar, asumiendo que la proyección de ${resolveName(leader.nombre)} se mantenga.`
-      }
-    }
-  }
 
   return (
     <section>
@@ -105,14 +92,12 @@ export function HeroComparison({ snapshot, previous, diff, resolveName, config }
                       resolveName((leader ?? a).nombre),
                     )}
                   </div>
-                  {thresholdLine && (
-                    <div
-                      className="text-[11px] md:text-xs italic font-semibold mt-2"
-                      style={{ color: 'var(--accent-neutral)' }}
-                    >
-                      {thresholdLine}
-                    </div>
-                  )}
+                  <div className="text-[11px] md:text-xs text-muted mt-2 leading-snug">
+                    Este indicador puede subir o bajar de forma considerable a
+                    medida que se contabilizan más actas — especialmente cuando
+                    aún faltan regiones por incorporarse a la proyección. Una
+                    cifra estable solo se consolida cerca del cierre del conteo.
+                  </div>
                 </div>
               </div>
             ) : null}
