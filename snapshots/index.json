@@ -1,6 +1,60 @@
 {
   "snapshots": [
     {
+      "filename": "snapshot_20260623_124832.json",
+      "generated_at": "2026-06-23T12:48:32-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 99.7,
+      "actas_contabilizadas_onpe": 99.727
+    },
+    {
+      "filename": "snapshot_20260623_114543.json",
+      "generated_at": "2026-06-23T11:45:43-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 99.7,
+      "actas_contabilizadas_onpe": 99.72
+    },
+    {
+      "filename": "snapshot_20260623_104255.json",
+      "generated_at": "2026-06-23T10:42:55-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 99.7,
+      "actas_contabilizadas_onpe": 99.718
+    },
+    {
+      "filename": "snapshot_20260622_183944.json",
+      "generated_at": "2026-06-22T18:39:44-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 99.7,
+      "actas_contabilizadas_onpe": 99.716
+    },
+    {
+      "filename": "snapshot_20260622_173635.json",
+      "generated_at": "2026-06-22T17:36:35-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 99.69,
+      "actas_contabilizadas_onpe": 99.711
+    },
+    {
+      "filename": "snapshot_20260622_163326.json",
+      "generated_at": "2026-06-22T16:33:26-05:00",
+      "id_eleccion": "10",
+      "ronda": 2,
+      "schema_version": 1,
+      "pct_pond_global": 99.68,
+      "actas_contabilizadas_onpe": 99.706
+    },
+    {
       "filename": "snapshot_20260622_142823.json",
       "generated_at": "2026-06-22T14:28:23-05:00",
       "id_eleccion": "10",
